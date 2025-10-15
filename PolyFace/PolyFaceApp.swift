@@ -7,9 +7,11 @@
 
 import SwiftUI
 import SwiftData
+import FirebaseCore
 
 @main
 struct PolyFaceApp: App {
+    // Keep SwiftData container (we may use it later for caching)
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -23,10 +25,16 @@ struct PolyFaceApp: App {
         }
     }()
 
+    init() {
+        // Configure Firebase
+        FirebaseApp.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppRootView()
         }
         .modelContainer(sharedModelContainer)
     }
 }
+

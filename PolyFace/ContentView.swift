@@ -6,61 +6,61 @@
 //
 
 import SwiftUI
-import SwiftData
 
-struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+// App Root With Tabs
+struct AppRootView: View {
+    @StateObject private var auth = AuthManager()
+    @StateObject private var usersService = UsersService()
+    @StateObject private var scheduleService = ScheduleService()
+    @StateObject private var trainersService = TrainersService()
+    @StateObject private var packagesService = PackagesService()
+    @StateObject private var bookingsService = BookingsService()
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
+        Group {
+            if auth.isReady {
+                TabView {
+                    HomeView(usersService: usersService, scheduleService: scheduleService)
+                        .tabItem {
+                            Image(systemName: "house.fill")
+                            Text("Home")
+                        }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
+                    BookView(trainersService: trainersService,
+                             scheduleService: scheduleService,
+                             packagesService: packagesService)
+                        .tabItem {
+                            Image(systemName: "calendar.badge.plus")
+                            Text("Book")
+                        }
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+                    ProfileView(usersService: usersService,
+                                packagesService: packagesService,
+                                bookingsService: bookingsService,
+                                scheduleService: scheduleService)
+                        .environmentObject(auth)
+                        .tabItem {
+                            Image(systemName: "person.crop.circle")
+                            Text("Profile")
+                        }
+
+                    MorePlaceholderView()
+                        .tabItem {
+                            Image(systemName: "ellipsis.circle")
+                            Text("More")
+                        }
+                }
+            } else {
+                ProgressView("Starting…")
             }
+        }
+        .task {
+            await auth.ensureSignedIn() // Temporary anonymous; replace with Email/Password flow
         }
     }
 }
 
 #Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+    AppRootView()
 }
+

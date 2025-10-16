@@ -19,7 +19,6 @@ struct BookView: View {
     @State private var monthStart: Date = Date().startOfMonth()
     @State private var selectedDate: Date = Date()
     @State private var selectedSlot: AvailabilitySlot?
-    @State private var selectedPackageId: String?
     @State private var bookingInFlight = false
     @State private var bookingAlert: BookingAlert?
 
@@ -123,14 +122,19 @@ struct BookView: View {
                                 .padding(.horizontal)
                         } else {
                             ForEach(scheduleService.daySlots, id: \.self) { slot in
-                                Button { selectedSlot = slot } label: {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        selectedSlot = slot
+                                    }
+                                } label: {
                                     HStack {
                                         Text("\(slot.startTime.formatted(date: .omitted, time: .shortened)) – \(slot.endTime.formatted(date: .omitted, time: .shortened))")
                                             .foregroundStyle(.primary)
                                         Spacer()
-                                        if selectedSlot?.id == slot.id {
-                                            Image(systemName: "checkmark.circle.fill").foregroundStyle(Brand.primary)
-                                        }
+                                        // Radio button on the right
+                                        let isSelected = selectedSlot?.id == slot.id
+                                        Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                                            .foregroundStyle(isSelected ? Brand.primary : .secondary)
                                     }
                                     .padding()
                                     .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformBackground))
@@ -141,26 +145,14 @@ struct BookView: View {
                         }
                     }
 
-                    if !packagesService.packages.isEmpty {
-                        Text("Use Package")
-                            .font(.headline)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal)
-
-                        Picker("Select Lesson Package", selection: $selectedPackageId) {
-                            Text("Choose a package").tag(nil as String?)
-                            ForEach(packagesService.packages) { pkg in
-                                let title = "\(pkg.packageType) • \(max(0, pkg.lessonsRemaining)) left"
-                                Text(title).tag(pkg.id as String?)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .padding(.horizontal)
-                    }
+                    // Removed "Use Package" section and picker
 
                     Button { Task { await performBooking() } } label: {
-                        HStack { if bookingInFlight { ProgressView().tint(.white) }
-                            Text("Book Now").font(.headline)
+                        HStack {
+                            if bookingInFlight { ProgressView().tint(.white) }
+                            Text("Book Now")
+                                .font(.headline)
+                                .fontWeight(isBookEnabled ? .bold : .regular)
                         }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -214,10 +206,7 @@ struct BookView: View {
               selectedTrainer?.id != nil,
               selectedSlot?.id != nil,
               packagesService.hasAvailableLessons else { return false }
-        if !packagesService.packages.isEmpty {
-            return selectedPackageId != nil
-        }
-        return false
+        return true
     }
 
     private func loadDayIfPossible() async {
@@ -232,13 +221,15 @@ struct BookView: View {
 
     private func performBooking() async {
         guard let trainerId = selectedTrainer?.id,
-              let slotId = selectedSlot?.id,
-              let pkgId = selectedPackageId else { return }
+              let slotId = selectedSlot?.id else { return }
         bookingInFlight = true
         defer { bookingInFlight = false }
         do {
-            _ = try await bookingManager.bookLesson(trainerId: trainerId, slotId: slotId, lessonPackageId: pkgId)
+            // BookingManager ignores the lessonPackageId argument and chooses automatically.
+            _ = try await bookingManager.bookLesson(trainerId: trainerId, slotId: slotId, lessonPackageId: "")
             bookingAlert = .init(title: "Booked!", message: "Your lesson has been booked successfully.")
+            // Refresh data after server writes complete
+            await packagesService.loadMyPackages()
             await loadDayIfPossible()
             await loadMonthIfPossible()
             selectedSlot = nil
@@ -314,4 +305,3 @@ private struct TrainerAvatarView: View {
         }
     }
 }
-

@@ -49,8 +49,8 @@ final class BookingManager: ObservableObject {
             throw BookingCallError.server(errMsg)
         }
 
-        // 4) Decrement (increment lessonsUsed) on the chosen package so UI updates immediately.
-        try await incrementLessonsUsed(for: uid, packageId: packageId)
+        // IMPORTANT: Do not update lessonPackages from the client.
+        // The Cloud Function must perform lessonsUsed increment and any related writes.
 
         if let bookingDict = dict["booking"] as? [String: Any] {
             let booking = try decodeBooking(from: bookingDict)
@@ -78,7 +78,7 @@ final class BookingManager: ObservableObject {
         throw BookingCallError.invalidResponse
     }
 
-    // MARK: - Package selection and decrement
+    // MARK: - Package selection
 
     private func chooseSoonestExpiringPackageId(for uid: String) async throws -> String? {
         let snap = try await db.collection("users")
@@ -122,19 +122,6 @@ final class BookingManager: ObservableObject {
         }
 
         return chosen?.id
-    }
-
-    private func incrementLessonsUsed(for uid: String, packageId: String) async throws {
-        let ref = db.collection("users")
-            .document(uid)
-            .collection("lessonPackages")
-            .document(packageId)
-
-        // Increase lessonsUsed by 1
-        try await ref.updateData([
-            "lessonsUsed": FieldValue.increment(Int64(1)),
-            "updatedAt": Date()
-        ])
     }
 
     // MARK: - Decode booking helper

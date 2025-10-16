@@ -5,77 +5,80 @@ import StoreKit
 @MainActor
 struct PurchaseLessonsView: View {
     @ObservedObject var packagesService: PackagesService
-    @StateObject private var trainersService = TrainersService()
     @StateObject private var purchaseManager = PurchaseManager()
 
-    @State private var selectedTrainer: Trainer?
-    @State private var selectedPackage: PackageOption = .one
     @State private var isPurchasing = false
     @State private var alert: AlertItem?
 
-    // Default expiration policy; change if your rules expect a different window
+    // Default expiration policy for newly purchased single lessons
     private let expirationMonths = 12
-
-    enum PackageOption: CaseIterable, Identifiable {
-        case one, five, ten
-        var id: String { key }
-        var key: String {
-            switch self { case .one: return "1"; case .five: return "5"; case .ten: return "10" }
-        }
-        var title: String {
-            switch self {
-            case .one: return "Private Lesson"
-            case .five: return "5 Private Lessons"
-            case .ten: return "10 Private Lessons"
-            }
-        }
-        var subtitle: String? {
-            switch self {
-            case .one: return nil
-            case .five: return "Save $25"
-            case .ten: return "Save $100"
-            }
-        }
-        var quantity: Int {
-            switch self { case .one: return 1; case .five: return 5; case .ten: return 10 }
-        }
-        var packageType: String {
-            switch self {
-            case .one: return "single"
-            case .five: return "five_pack"
-            case .ten: return "ten_pack"
-            }
-        }
-    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("Purchase Private Lessons")
+                Text("Lessons")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(Brand.primary)
                     .padding(.horizontal)
 
-                trainerCard
-
-                Text("Package")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Brand.primary)
+                // Lessons summary card
+                lessonsCard
                     .padding(.horizontal)
 
-                VStack(spacing: 12) {
-                    ForEach(PackageOption.allCases) { option in
-                        packageRow(option: option)
+                // Individual credits list
+                if !expandedCredits.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Available Lessons")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Brand.primary)
+                            .padding(.horizontal)
+
+                        VStack(spacing: 8) {
+                            ForEach(expandedCredits.indices, id: \.self) { idx in
+                                let credit = expandedCredits[idx]
+                                HStack {
+                                    HStack(spacing: 10) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Brand.primary.opacity(0.12))
+                                            Image(systemName: "graduationcap.fill")
+                                                .foregroundStyle(Brand.primary)
+                                        }
+                                        .frame(width: 36, height: 36)
+
+                                        Text("Lesson")
+                                            .foregroundStyle(.primary)
+                                    }
+
+                                    Spacer()
+
+                                    Text(dateString(credit.expirationDate))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding()
+                                .background(RoundedRectangle(cornerRadius: 16).fill(Color.platformBackground))
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+                } else {
+                    // Empty state when no credits are available
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("No available lessons.")
+                            .foregroundStyle(.secondary)
                             .padding(.horizontal)
                     }
                 }
 
+                // Buy button at bottom with cart icon
                 Button {
                     Task { await purchaseAndRecord() }
                 } label: {
-                    HStack {
+                    HStack(spacing: 10) {
                         if isPurchasing { ProgressView().tint(.white) }
-                        Text("Purchase").font(.headline)
+                        Image(systemName: "cart.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Buy Lessons").font(.headline)
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -93,15 +96,10 @@ struct PurchaseLessonsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .background(Color.platformGroupedBackground)
         .task {
-            if trainersService.trainers.isEmpty { await trainersService.loadAll() }
-            if selectedTrainer == nil {
-                if let jeff = trainersService.trainers.first(where: { ($0.name ?? "").localizedCaseInsensitiveCompare("Jeff Schmitz") == .orderedSame }) {
-                    selectedTrainer = jeff
-                } else {
-                    selectedTrainer = trainersService.trainers.first
-                }
+            if packagesService.packages.isEmpty {
+                await packagesService.loadMyPackages()
             }
-            // Load the single product (used for all options for now)
+            // Load the single product (used for purchases)
             await purchaseManager.loadProduct(identifier: "jeff_lesson")
         }
         .alert(item: $alert) { a in
@@ -109,106 +107,61 @@ struct PurchaseLessonsView: View {
         }
     }
 
-    private var trainerCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Trainers")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Brand.primary)
+    // MARK: - Lessons Summary
 
-            HStack(spacing: 12) {
-                TrainerAvatarMini(trainer: selectedTrainer, size: 48)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(selectedTrainer?.name ?? "Select Trainer")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text("Trainer")
-                        .foregroundStyle(.secondary)
-                }
+    private var lessonsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Lessons")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Brand.primary)
                 Spacer()
-                Menu {
-                    ForEach(trainersService.trainers.sorted(by: jeffFirst), id: \.self) { trainer in
-                        Button {
-                            selectedTrainer = trainer
-                        } label: {
-                            HStack(spacing: 10) {
-                                TrainerAvatarMini(trainer: trainer, size: 24)
-                                Text(trainer.name ?? "Unnamed")
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "chevron.down")
-                        .foregroundStyle(.secondary)
-                        .padding(10)
-                        .background(Circle().fill(Color.secondary.opacity(0.12)))
-                }
             }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 16).fill(Color.platformBackground))
+
+            Text("Passes Remaining")
+                .foregroundStyle(.secondary)
+
+            Text("\(remainingCredits)")
+                .font(.system(size: 34, weight: .bold))
+                .foregroundStyle(.primary)
         }
-        .padding(.horizontal)
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.platformBackground)
+                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+        )
     }
 
-    private func packageRow(option: PackageOption) -> some View {
-        let basePrice = purchaseManager.product?.displayPrice ?? "$–"
-        let priceText: String
-        if let product = purchaseManager.product {
-            // Multiply for 5/10 purely for display until distinct products exist
-            if option.quantity == 1 {
-                priceText = product.displayPrice
-            } else {
-                let num: Decimal = Decimal(option.quantity) * product.price
-                let formatter = product.priceFormatStyle
-                priceText = formatter.format(num)
-            }
-        } else {
-            priceText = basePrice
-        }
+    // MARK: - Data shaping
 
-        return Button {
-            selectedPackage = option
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12).fill(Brand.primary.opacity(0.12))
-                    Image(systemName: "briefcase.fill")
-                        .foregroundStyle(Brand.primary)
-                }
-                .frame(width: 48, height: 48)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(option.title)
-                        .foregroundStyle(.primary)
-                    if let sub = option.subtitle {
-                        Text(sub).font(.footnote).foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-                Text(priceText)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Image(systemName: selectedPackage == option ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(selectedPackage == option ? Brand.primary : .secondary)
-            }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 16).fill(Color.platformBackground))
-        }
-        .buttonStyle(.plain)
+    private struct LessonCredit: Identifiable, Hashable {
+        let id = UUID()
+        let expirationDate: Date
     }
 
-    private func jeffFirst(_ lhs: Trainer, _ rhs: Trainer) -> Bool {
-        func isJeff(_ t: Trainer) -> Bool {
-            (t.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                .localizedCaseInsensitiveCompare("Jeff Schmitz") == .orderedSame
+    // Sum of remaining (non-expired) lessons across all packages
+    private var remainingCredits: Int {
+        packagesService.packages.reduce(into: 0) { sum, pkg in
+            guard pkg.expirationDate >= Date() else { return }
+            sum += max(0, pkg.lessonsRemaining)
         }
-        let lp = isJeff(lhs) ? 0 : 1
-        let rp = isJeff(rhs) ? 0 : 1
-        if lp != rp { return lp < rp }
-        let ln = lhs.name ?? ""
-        let rn = rhs.name ?? ""
-        return ln.localizedCaseInsensitiveCompare(rn) == .orderedAscending
     }
+
+    // Expand each package's remaining credits into individual "credit" rows
+    private var expandedCredits: [LessonCredit] {
+        var credits: [LessonCredit] = []
+        for pkg in packagesService.packages where pkg.expirationDate >= Date() {
+            let remaining = max(0, pkg.lessonsRemaining)
+            if remaining > 0 {
+                credits.append(contentsOf: Array(repeating: LessonCredit(expirationDate: pkg.expirationDate), count: remaining))
+            }
+        }
+        return credits
+    }
+
+    // MARK: - Purchase flow
 
     private func purchaseAndRecord() async {
         guard purchaseManager.product != nil else {
@@ -218,81 +171,38 @@ struct PurchaseLessonsView: View {
         isPurchasing = true
         defer { isPurchasing = false }
         do {
-            // For now, regardless of selectedPackage, we buy jeff_lesson once.
             let transaction = try await purchaseManager.purchaseLoadedProduct()
 
-            // Build package payload per your rules
+            // Create a single-lesson package per purchase
             let now = Date()
             let expiration = Calendar.current.date(byAdding: .month, value: expirationMonths, to: now) ?? now
             try await packagesService.createLessonPackage(
-                packageType: selectedPackage.packageType,  // "single" | "five_pack" | "ten_pack"
-                totalLessons: selectedPackage.quantity,    // 1 | 5 | 10
+                packageType: "single",
+                totalLessons: 1,
                 purchaseDate: now,
                 expirationDate: expiration,
                 transactionId: String(transaction.id)
             )
 
             await packagesService.loadMyPackages()
-            alert = .init(title: "Purchased", message: "Your package has been added to your account.")
+            alert = .init(title: "Purchased", message: "Your lesson has been added to your account.")
         } catch {
             alert = .init(title: "Purchase Failed", message: error.localizedDescription)
         }
+    }
+
+    // MARK: - Helpers
+
+    private func dateString(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f.string(from: date)
     }
 
     private struct AlertItem: Identifiable {
         let id = UUID()
         let title: String
         let message: String
-    }
-}
-
-// Small avatar view local to this screen
-private struct TrainerAvatarMini: View {
-    let trainer: Trainer?
-    var size: CGFloat = 36
-
-    var body: some View {
-        let cornerRadius = size / 2
-        Group {
-            if let url = trainerImageURL(from: trainer) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        placeholder
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .failure:
-                        placeholder
-                    @unknown default:
-                        placeholder
-                    }
-                }
-            } else {
-                placeholder
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 1, x: 0, y: 1)
-    }
-
-    private var placeholder: some View {
-        ZStack {
-            Circle().fill(Brand.primary.opacity(0.12))
-            Image(systemName: "person.crop.circle.fill").foregroundStyle(Brand.primary)
-        }
-    }
-
-    private func trainerImageURL(from trainer: Trainer?) -> URL? {
-        guard let trainer else { return nil }
-        let urlString = trainer.photoURL?.trimmingCharacters(in: .whitespacesAndNewlines)
-            ?? trainer.avatarUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
-            ?? trainer.imageUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let s = urlString, !s.isEmpty else { return nil }
-        return URL(string: s)
     }
 }

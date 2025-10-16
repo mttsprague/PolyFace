@@ -270,48 +270,91 @@ private struct SignedInProfileScreen: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: PASSES tab
+    // MARK: PASSES tab (updated)
 
     private var passesTab: some View {
         VStack(spacing: 12) {
             if packagesService.isLoading {
                 ProgressView().padding()
-            } else if packagesService.packages.isEmpty {
-                card {
-                    Text("No packages found.")
-                        .foregroundStyle(.secondary)
-                }
             } else {
-                ForEach(packagesService.packages) { pkg in
-                    card {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(pkg.packageType.capitalized)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                            Text("\(max(0, pkg.lessonsRemaining)) remaining")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text("Purchased: \(dateString(pkg.purchaseDate))  •  Expires: \(dateString(pkg.expirationDate))")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
+                // Lessons summary card (no inline Buy button)
+                card {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Lessons")
+                            .font(.title3.bold())
+                            .foregroundStyle(Brand.primary)
+
+                        Text("Passes Remaining")
+                            .foregroundStyle(.secondary)
+
+                        Text("\(remainingCredits)")
+                            .font(.system(size: 34, weight: .bold))
+                            .foregroundStyle(.primary)
                     }
                 }
-            }
 
-            // Purchase Lessons button (always visible)
-            NavigationLink {
-                PurchaseLessonsView(packagesService: packagesService)
-            } label: {
-                Text("Purchase Lessons")
-                    .font(.headline)
+                // Individual available lessons with expiration date and header
+                if !expandedCredits.isEmpty {
+                    card {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Available Lessons")
+                                .font(.title3.bold())
+                                .foregroundStyle(Brand.primary)
+
+                            // Header row
+                            HStack {
+                                Text("Lesson")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("Expiration Date")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+
+                            ForEach(expandedCredits.indices, id: \.self) { idx in
+                                let credit = expandedCredits[idx]
+                                HStack {
+                                    Text("Lesson")
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    Text(dateString(credit.expirationDate))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 6)
+
+                                if idx < expandedCredits.count - 1 {
+                                    Divider().opacity(0.15)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    card {
+                        Text("No available lessons.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                // Bottom Buy button (single purchase entry point)
+                NavigationLink {
+                    PurchaseLessonsView(packagesService: packagesService)
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "cart.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Buy Lessons")
+                            .font(.headline)
+                    }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Brand.primary)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
         }
         .padding(.horizontal, 16)
     }
@@ -381,6 +424,31 @@ private struct SignedInProfileScreen: View {
         return bookingsService.myBookings
             .filter { ($0.endTime ?? now) < now }
             .sorted { ($0.startTime ?? .distantPast) > ($1.startTime ?? .distantPast) }
+    }
+
+    // MARK: Remaining credits + expanded credit list
+
+    private var remainingCredits: Int {
+        packagesService.packages.reduce(into: 0) { sum, pkg in
+            guard pkg.expirationDate >= Date() else { return }
+            sum += max(0, pkg.lessonsRemaining)
+        }
+    }
+
+    private struct LessonCredit: Identifiable, Hashable {
+        let id = UUID()
+        let expirationDate: Date
+    }
+
+    private var expandedCredits: [LessonCredit] {
+        var credits: [LessonCredit] = []
+        for pkg in packagesService.packages where pkg.expirationDate >= Date() {
+            let remaining = max(0, pkg.lessonsRemaining)
+            if remaining > 0 {
+                credits.append(contentsOf: Array(repeating: LessonCredit(expirationDate: pkg.expirationDate), count: remaining))
+            }
+        }
+        return credits
     }
 }
 

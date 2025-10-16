@@ -298,6 +298,20 @@ private struct SignedInProfileScreen: View {
                     }
                 }
             }
+
+            // Purchase Lessons button (always visible)
+            NavigationLink {
+                PurchaseLessonsView(packagesService: packagesService)
+            } label: {
+                Text("Purchase Lessons")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Brand.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .padding(.top, 8)
         }
         .padding(.horizontal, 16)
     }
@@ -500,4 +514,3 @@ private struct RegisterForm: View {
         .padding(.horizontal)
     }
 }
-

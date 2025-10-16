@@ -42,6 +42,39 @@ final class PackagesService: ObservableObject {
         packages.contains { $0.lessonsRemaining > 0 && $0.expirationDate >= Date() }
     }
 
+    // Create a new lesson package document under the signed-in user.
+    // This conforms to the rule requirements:
+    // - lessonsUsed = 0 on creation
+    // - allowed packageType: single | five_pack | ten_pack
+    // - allowed totalLessons: 1 | 5 | 10
+    // - purchaseDate/expirationDate are Dates (serialized as Firestore Timestamps)
+    func createLessonPackage(packageType: String,
+                             totalLessons: Int,
+                             purchaseDate: Date,
+                             expirationDate: Date,
+                             transactionId: String?) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "PackagesService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not signed in"])
+        }
+
+        let payload: [String: Any?] = [
+            "packageType": packageType,        // "single" | "five_pack" | "ten_pack"
+            "totalLessons": totalLessons,      // 1 | 5 | 10
+            "lessonsUsed": 0,                  // must be 0 on create per rules
+            "purchaseDate": purchaseDate,      // Firestore will store as Timestamp
+            "expirationDate": expirationDate,  // Firestore will store as Timestamp
+            "transactionId": transactionId
+        ]
+
+        // Compact out nils for Firestore
+        let data = payload.compactMapValues { $0 }
+
+        try await db.collection("users")
+            .document(uid)
+            .collection("lessonPackages")
+            .addDocument(data: data)
+    }
+
     private func decodePackage(id: String, data: [String: Any]) -> LessonPackage? {
         guard
             let packageType = data["packageType"] as? String,
@@ -72,3 +105,4 @@ final class PackagesService: ObservableObject {
         return nil
     }
 }
+

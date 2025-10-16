@@ -39,7 +39,7 @@ final class PurchaseManager: ObservableObject {
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified(_, let error):
-            throw error ?? PurchaseError.unverified
+            throw error
         case .verified(let safe):
             return safe
         }

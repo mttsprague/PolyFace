@@ -15,6 +15,7 @@
 		C320430F2E9ECE09003EF857 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = C320430E2E9ECE09003EF857 /* FirebaseFunctions */; };
 		C32043112E9ECE09003EF857 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C32043102E9ECE09003EF857 /* FirebaseStorage */; };
 		C381D0122EA13C5E00173F89 /* BookingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C381D0112EA13C5E00173F89 /* BookingManager.swift */; };
+		C3BCEE222EA15912004619EF /* MyUpcomingLessonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3BCEE212EA15911004619EF /* MyUpcomingLessonsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,6 +40,7 @@
 		C32042592E9C9D53003EF857 /* PolyFaceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PolyFaceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C32042632E9C9D53003EF857 /* PolyFaceUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PolyFaceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C381D0112EA13C5E00173F89 /* BookingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookingManager.swift; sourceTree = "<group>"; };
+		C3BCEE212EA15911004619EF /* MyUpcomingLessonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyUpcomingLessonsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -99,6 +101,7 @@
 				C32042662E9C9D53003EF857 /* PolyFaceUITests */,
 				C320424B2E9C9D52003EF857 /* Products */,
 				C381D0112EA13C5E00173F89 /* BookingManager.swift */,
+				C3BCEE212EA15911004619EF /* MyUpcomingLessonsView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -266,6 +269,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C3BCEE222EA15912004619EF /* MyUpcomingLessonsView.swift in Sources */,
 				C381D0122EA13C5E00173F89 /* BookingManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

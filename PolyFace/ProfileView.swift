@@ -82,9 +82,14 @@ private struct SignedInProfileScreen: View {
     @ObservedObject var packagesService: PackagesService
     @ObservedObject var bookingsService: BookingsService
     @ObservedObject var scheduleService: ScheduleService
+    @StateObject private var trainersService = TrainersService()
 
     @State private var tab: Tab = .schedule
     enum Tab: String { case schedule = "SCHEDULE", passes = "PASSES", wallet = "WALLET" }
+
+    // Shared venue/location (matches HomeView)
+    private let venueName = "Midtown"
+    private let venueCityStateZip = "Chattanooga, TN 37411"
 
     var body: some View {
         ScrollView {
@@ -98,6 +103,11 @@ private struct SignedInProfileScreen: View {
         .background(Color.platformGroupedBackground)
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if trainersService.trainers.isEmpty {
+                await trainersService.loadAll()
+            }
+        }
         .refreshable {
             await usersService.loadCurrentUserIfAvailable()
             await packagesService.loadMyPackages()
@@ -200,16 +210,27 @@ private struct SignedInProfileScreen: View {
 
     private var scheduleTab: some View {
         VStack(spacing: 16) {
+            // Next Lesson card
             card {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Upcoming Schedule")
+                        Text("Next Lesson")
                             .font(.title3.bold())
                             .foregroundStyle(Brand.primary)
                         if let next = nextUpcomingBooking() {
                             if let start = next.startTime, let end = next.endTime {
                                 Text("\(dateString(start)) • \(timeString(start))–\(timeString(end))")
                                     .foregroundStyle(.secondary)
+                                HStack(spacing: 6) {
+                                    Image(systemName: "person.fill").foregroundStyle(.secondary)
+                                    Text(trainerName(for: next.trainerUID))
+                                        .foregroundStyle(.secondary)
+                                }
+                                HStack(spacing: 6) {
+                                    Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
+                                    Text("\(venueName) • \(venueCityStateZip)")
+                                        .foregroundStyle(.secondary)
+                                }
                             } else {
                                 Text("Your next booked lesson will appear here.")
                                     .foregroundStyle(.secondary)
@@ -220,25 +241,31 @@ private struct SignedInProfileScreen: View {
                         }
                     }
                     Spacer()
-                    NavigationLink {
-                        ScheduleView(scheduleService: scheduleService)
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 18, weight: .semibold))
-                            Text("View\nSchedule")
-                                .multilineTextAlignment(.leading)
-                                .font(.headline)
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .background(Brand.primary)
-                        .clipShape(Capsule())
-                    }
                 }
             }
 
+            // Moved button below the card, renamed to "View Full Schedule"
+            NavigationLink {
+                MyUpcomingLessonsView(bookingsService: bookingsService,
+                                      trainersService: trainersService,
+                                      venueName: venueName,
+                                      venueCityStateZip: venueCityStateZip)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text("View Full Schedule")
+                        .font(.headline)
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(Brand.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
+            // Previous lessons card
             card {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Previous")
@@ -255,6 +282,16 @@ private struct SignedInProfileScreen: View {
                                     .font(.headline)
                                 if let s = booking.startTime, let e = booking.endTime {
                                     Text("\(dateString(s)) • \(timeString(s))–\(timeString(e))")
+                                        .foregroundStyle(.secondary)
+                                }
+                                HStack(spacing: 6) {
+                                    Image(systemName: "person.fill").foregroundStyle(.secondary)
+                                    Text(trainerName(for: booking.trainerUID))
+                                        .foregroundStyle(.secondary)
+                                }
+                                HStack(spacing: 6) {
+                                    Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
+                                    Text("\(venueName) • \(venueCityStateZip)")
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -409,6 +446,10 @@ private struct SignedInProfileScreen: View {
         guard let date else { return "-" }
         let f = DateFormatter(); f.dateStyle = .none; f.timeStyle = .short
         return f.string(from: date)
+    }
+
+    private func trainerName(for trainerId: String) -> String {
+        trainersService.trainers.first(where: { $0.id == trainerId })?.name ?? "Trainer"
     }
 
     private func nextUpcomingBooking() -> Booking? {

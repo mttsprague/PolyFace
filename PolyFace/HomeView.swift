@@ -22,6 +22,27 @@ struct HomeView: View {
         Auth.auth().currentUser != nil
     }
 
+    // Static class previews for the Home screen (not tied to user bookings)
+    private var comingUpClasses: [ClassPreview] {
+        [
+            ClassPreview(
+                title: "Beginner Skills Class",
+                start: date(year: 2025, month: 9, day: 23, hour: 17, minute: 0),
+                end:   date(year: 2025, month: 9, day: 23, hour: 18, minute: 30)
+            ),
+            ClassPreview(
+                title: "Serving & Passing Class",
+                start: date(year: 2025, month: 9, day: 25, hour: 18, minute: 0),
+                end:   date(year: 2025, month: 9, day: 25, hour: 19, minute: 30)
+            ),
+            ClassPreview(
+                title: "Hitting & Blocking Class",
+                start: date(year: 2025, month: 9, day: 27, hour: 10, minute: 0),
+                end:   date(year: 2025, month: 9, day: 27, hour: 11, minute: 30)
+            )
+        ]
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -81,49 +102,31 @@ struct HomeView: View {
                     }
                     .buttonStyle(.plain)
 
+                    // Coming Up (static previews, not user-linked)
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Coming Up")
                             .font(.title3.bold())
                             .foregroundStyle(Brand.primary)
 
                         VStack(spacing: 12) {
-                            if scheduleService.isLoading && scheduleService.upcoming.isEmpty {
-                                ProgressView().frame(maxWidth: .infinity, alignment: .center)
-                            }
-
-                            if !scheduleService.upcoming.isEmpty {
-                                ForEach(scheduleService.upcoming.prefix(3)) { slot in
-                                    SessionRow(slot: slot)
-                                }
-                            }
-
-                            if scheduleService.errorMessage != nil {
-                                Text("Could not load schedule.")
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            // Show a hint when logged out (since we don’t load schedules)
-                            if !isAuthenticated && scheduleService.upcoming.isEmpty && !scheduleService.isLoading {
-                                Text("Sign in to view upcoming availability.")
-                                    .foregroundStyle(.secondary)
+                            ForEach(comingUpClasses) { item in
+                                ClassPreviewRow(item: item)
                             }
                         }
                     }
 
-                    // Only show "View Full Schedule" if authenticated
-                    if isAuthenticated {
-                        NavigationLink {
-                            ScheduleView(scheduleService: scheduleService)
-                        } label: {
-                            Text("View Full Schedule")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Brand.primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .shadow(color: Brand.primary.opacity(0.35), radius: 8, x: 0, y: 4)
-                        }
+                    // Always show this; it will point to the future Classes schedule.
+                    NavigationLink {
+                        ClassesSchedulePlaceholder()
+                    } label: {
+                        Text("View Full Schedule")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Brand.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Brand.primary.opacity(0.35), radius: 8, x: 0, y: 4)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -137,13 +140,9 @@ struct HomeView: View {
             #endif
         }
         .task {
-            // Only load user/schedule data if authenticated
+            // Keep user info fresh if signed in; do not load schedule here.
             if isAuthenticated {
                 await usersService.loadCurrentUserIfAvailable()
-                await scheduleService.loadUpcoming()
-            } else {
-                // Clear any stale data when logged out
-                scheduleService.clearForLogout()
             }
         }
     }
@@ -166,10 +165,30 @@ struct HomeView: View {
             }
         }
     }
+
+    // Build a concrete Date from components in the local calendar/timezone.
+    private func date(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> Date {
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month
+        comps.day = day
+        comps.hour = hour
+        comps.minute = minute
+        return Calendar.current.date(from: comps) ?? Date()
+    }
 }
 
-struct SessionRow: View {
-    let slot: AvailabilitySlot
+// MARK: - Class Preview Models/Views
+
+private struct ClassPreview: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let start: Date
+    let end: Date
+}
+
+private struct ClassPreviewRow: View {
+    let item: ClassPreview
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -182,9 +201,13 @@ struct SessionRow: View {
             .frame(width: 36, height: 36)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(slot.displayTitle).font(.headline)
-                Text("\(slot.startTime, style: .date) • \(slot.startTime.formatted(date: .omitted, time: .shortened))–\(slot.endTime.formatted(date: .omitted, time: .shortened))")
+                Text(item.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                Text("\(item.start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())) • \(item.start.formatted(date: .omitted, time: .shortened))–\(item.end.formatted(date: .omitted, time: .shortened))")
                     .foregroundStyle(.secondary)
+
                 HStack(spacing: 6) {
                     Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
                     Text("TBD").foregroundStyle(.secondary)
@@ -199,5 +222,26 @@ struct SessionRow: View {
                 .fill(Color.platformBackground)
                 .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
         )
+    }
+}
+
+// MARK: - Placeholder destination for future Classes schedule
+
+private struct ClassesSchedulePlaceholder: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.system(size: 48))
+                .foregroundStyle(Brand.primary)
+            Text("Classes Schedule Coming Soon")
+                .font(.title3.bold())
+            Text("This will show the full schedule of group classes.")
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.platformGroupedBackground)
+        .navigationTitle("Classes")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

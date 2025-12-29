@@ -46,94 +46,90 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Welcome \(usersService.currentUser?.displayName ?? "")")
-                            .font(.system(size: 34, weight: .bold))
-                            .foregroundStyle(Brand.primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: Spacing.xl) {
+                    // Hero Header
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text("Welcome Back")
+                            .font(.headingMedium)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        
+                        Text(usersService.currentUser?.displayName ?? "Athlete")
+                            .font(.displayMedium)
+                            .foregroundStyle(AppTheme.primary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, Spacing.md)
 
-                    Text("PolyFace Volleyball Academy")
-                        .font(.title2.bold())
-                        .foregroundStyle(Brand.primary)
+                    // Location Card
+                    CardView(padding: Spacing.md) {
+                        Button {
+                            openInMaps(address: "\(venueAddressLine), \(venueCityStateZip)")
+                        } label: {
+                            HStack(spacing: Spacing.md) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [AppTheme.primary, AppTheme.primaryLight],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 56, height: 56)
+                                    
+                                    Image(systemName: "mappin.circle.fill")
+                                        .font(.system(size: 26))
+                                        .foregroundStyle(.white)
+                                }
 
-                    Button {
-                        openInMaps(address: "\(venueAddressLine), \(venueCityStateZip)")
-                    } label: {
-                        HStack(spacing: 16) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Brand.primary.opacity(0.12))
-                                Image(systemName: "mappin.and.ellipse")
-                                    .font(.system(size: 24, weight: .semibold))
-                                    .foregroundStyle(Brand.primary)
-                            }
-                            .frame(width: 56, height: 56)
+                                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                                    Text("PolyFace Volleyball")
+                                        .font(.headingSmall)
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                    
+                                    Text(venueName)
+                                        .font(.bodyMedium)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                    
+                                    Text(venueAddressLine)
+                                        .font(.bodySmall)
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                }
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(venueName)
-                                    .font(.headline)
-                                    .foregroundStyle(Brand.primary)
-                                Text(venueAddressLine)
-                                    .foregroundStyle(.secondary)
-                                Text(venueCityStateZip)
-                                    .foregroundStyle(.secondary)
-                            }
+                                Spacer()
 
-                            Spacer()
-
-                            ZStack {
-                                Circle()
-                                    .fill(Brand.primary.opacity(0.12))
-                                    .frame(width: 36, height: 36)
-                                Image(systemName: "chevron.right")
-                                    .foregroundStyle(Brand.primary)
-                                    .font(.system(size: 16, weight: .semibold))
+                                Image(systemName: "chevron.right.circle.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundStyle(AppTheme.primary.opacity(0.3))
                             }
                         }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 18)
-                                .fill(Color.platformBackground)
-                                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
-                        )
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
-                    // Coming Up (static previews, not user-linked)
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Coming Up")
-                            .font(.title3.bold())
-                            .foregroundStyle(Brand.primary)
-
-                        VStack(spacing: 12) {
+                    // Coming Up Section
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        SectionHeaderView(title: "Upcoming Classes")
+                        
+                        VStack(spacing: Spacing.sm) {
                             ForEach(comingUpClasses) { item in
                                 ClassPreviewRow(item: item)
                             }
                         }
                     }
 
-                    // Always show this; it will point to the future Classes schedule.
+                    // CTA Button
                     NavigationLink {
                         ClassesSchedulePlaceholder()
                     } label: {
                         Text("View Full Schedule")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Brand.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .shadow(color: Brand.primary.opacity(0.35), radius: 8, x: 0, y: 4)
                     }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.top, Spacing.md)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 40)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.bottom, Spacing.xxxl)
             }
-            .background(Color.platformGroupedBackground)
+            .background(Color.platformGroupedBackground.ignoresSafeArea())
             .navigationTitle("")
             #if os(iOS)
             .navigationBarHidden(true)
@@ -191,37 +187,54 @@ private struct ClassPreviewRow: View {
     let item: ClassPreview
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Brand.primary.opacity(0.12))
-                Image(systemName: "calendar")
-                    .foregroundStyle(Brand.primary)
-            }
-            .frame(width: 36, height: 36)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Text("\(item.start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())) • \(item.start.formatted(date: .omitted, time: .shortened))–\(item.end.formatted(date: .omitted, time: .shortened))")
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 6) {
-                    Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
-                    Text("TBD").foregroundStyle(.secondary)
+        CardView(padding: Spacing.md) {
+            HStack(spacing: Spacing.md) {
+                // Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: CornerRadius.sm, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [AppTheme.secondary, AppTheme.secondaryLight],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 50, height: 50)
+                    
+                    Image(systemName: "figure.volleyball")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white)
                 }
-                .font(.subheadline)
+
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                    Text(item.title)
+                        .font(.headingSmall)
+                        .foregroundStyle(AppTheme.textPrimary)
+
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "calendar")
+                            .font(.labelSmall)
+                        Text(item.start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                            .font(.labelMedium)
+                    }
+                    .foregroundStyle(AppTheme.textSecondary)
+
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "clock")
+                            .font(.labelSmall)
+                        Text("\(item.start.formatted(date: .omitted, time: .shortened)) - \(item.end.formatted(date: .omitted, time: .shortened))")
+                            .font(.labelMedium)
+                    }
+                    .foregroundStyle(AppTheme.textSecondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.textTertiary)
             }
-            Spacer()
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.platformBackground)
-                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
-        )
     }
 }
 
@@ -229,18 +242,13 @@ private struct ClassPreviewRow: View {
 
 private struct ClassesSchedulePlaceholder: View {
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "calendar.badge.plus")
-                .font(.system(size: 48))
-                .foregroundStyle(Brand.primary)
-            Text("Classes Schedule Coming Soon")
-                .font(.title3.bold())
-            Text("This will show the full schedule of group classes.")
-                .foregroundStyle(.secondary)
-        }
-        .padding()
+        EmptyStateView(
+            icon: "calendar.badge.plus",
+            title: "Coming Soon",
+            message: "Group classes schedule will be available here. Check back later for updates!"
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.platformGroupedBackground)
+        .background(Color.platformGroupedBackground.ignoresSafeArea())
         .navigationTitle("Classes")
         .navigationBarTitleDisplayMode(.inline)
     }

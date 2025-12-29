@@ -22,16 +22,14 @@ struct AppRootView: View {
                 TabView {
                     HomeView(usersService: usersService, scheduleService: scheduleService)
                         .tabItem {
-                            Image(systemName: "house.fill")
-                            Text("Home")
+                            Label("Home", systemImage: "house.fill")
                         }
 
                     BookView(trainersService: trainersService,
                              scheduleService: scheduleService,
                              packagesService: packagesService)
                         .tabItem {
-                            Image(systemName: "calendar.badge.plus")
-                            Text("Book")
+                            Label("Book", systemImage: "calendar.badge.plus")
                         }
 
                     ProfileView(usersService: usersService,
@@ -40,18 +38,23 @@ struct AppRootView: View {
                                 scheduleService: scheduleService)
                         .environmentObject(auth)
                         .tabItem {
-                            Image(systemName: "person.crop.circle")
-                            Text("Profile")
+                            Label("Profile", systemImage: "person.crop.circle")
                         }
 
                     MorePlaceholderView()
                         .tabItem {
-                            Image(systemName: "ellipsis.circle")
-                            Text("More")
+                            Label("More", systemImage: "ellipsis.circle")
                         }
                 }
+                .tint(AppTheme.primary)
             } else {
-                ProgressView("Starting…")
+                VStack(spacing: Spacing.lg) {
+                    ProgressView()
+                        .tint(AppTheme.primary)
+                    Text("Starting…")
+                        .font(.bodyLarge)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
             }
         }
         .task {

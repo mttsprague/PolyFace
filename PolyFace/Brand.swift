@@ -8,6 +8,7 @@
 
 import SwiftUI
 
+// Legacy Brand reference - use AppTheme instead
 enum Brand {
-    static let primary = Color(red: 0.20, green: 0.70, blue: 0.68)
+    static let primary = AppTheme.primary
 }

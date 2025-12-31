@@ -300,7 +300,7 @@ struct PurchaseLessonsView: View {
     // MARK: - Purchase flow
 
     private func purchaseSelectedOption() async {
-        guard let userId = Auth.auth().currentUser?.uid else {
+        guard Auth.auth().currentUser?.uid != nil else {
             alert = .init(title: "Error", message: "You must be signed in to purchase.")
             return
         }
@@ -363,6 +363,8 @@ struct PurchaseLessonsView: View {
                     successMessage = "Your 5-lesson package has been added to your account. Time to start training!"
                 case .tenPack:
                     successMessage = "Your 10-lesson package has been added to your account. Let's get to work!"
+                case .classPass:
+                    successMessage = "Your class pass has been added to your account. You can now register for group classes!"
                 }
                 
                 alert = .init(title: "Purchase Successful! 🎉", message: successMessage)

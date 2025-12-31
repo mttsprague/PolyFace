@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseFunctions
 
 @MainActor
 final class ClassesService: ObservableObject {
@@ -19,6 +20,7 @@ final class ClassesService: ObservableObject {
     @Published private(set) var errorMessage: String?
     
     private let db = Firestore.firestore()
+    private let functions = Functions.functions()
     
     // Load all open classes for registration
     func loadOpenClasses() async {
@@ -62,7 +64,21 @@ final class ClassesService: ObservableObject {
         }
     }
     
-    // Register for a class
+    // Register for a class using a class pass (calls backend function)
+    func registerForClassWithPass(classId: String, classPassPackageId: String) async throws {
+        let data: [String: Any] = [
+            "classId": classId,
+            "classPassPackageId": classPassPackageId
+        ]
+        
+        let result = try await functions.httpsCallable("registerForClass").call(data)
+        
+        if let message = (result.data as? [String: Any])?["message"] as? String {
+            print("Registration success: \(message)")
+        }
+    }
+    
+    // Register for a class (old direct method - deprecated)
     func registerForClass(classId: String, firstName: String, lastName: String) async throws {
         guard let uid = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "ClassesService", code: -1, 

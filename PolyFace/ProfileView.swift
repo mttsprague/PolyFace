@@ -378,8 +378,8 @@ private struct SignedInProfileScreen: View {
                 // 3-Athlete Passes
                 passTypeCard(title: "3-Athlete Passes", count: threeAthletePassesRemaining, icon: "person.3.fill")
                 
-                // Registered Classes (not a pass system, just shows upcoming registrations)
-                passTypeCard(title: "Registered Classes", count: registeredClassesCount, icon: "sportscourt.fill")
+                // Class Passes
+                passTypeCard(title: "Class Passes", count: classPassesRemaining, icon: "sportscourt.fill")
 
                 // Bottom Buy button
                 NavigationLink {
@@ -404,9 +404,6 @@ private struct SignedInProfileScreen: View {
     }
     
     private func passTypeCard(title: String, count: Int, icon: String) -> some View {
-        let isClassCard = title == "Registered Classes"
-        let remainingText = isClassCard ? "upcoming" : "remaining"
-        
         return card {
             HStack(spacing: 16) {
                 ZStack {
@@ -422,7 +419,7 @@ private struct SignedInProfileScreen: View {
                     Text(title)
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text("\(count) \(remainingText)")
+                    Text("\(count) remaining")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -625,6 +622,14 @@ private struct SignedInProfileScreen: View {
         packagesService.packages.reduce(into: 0) { sum, pkg in
             guard pkg.expirationDate >= Date() else { return }
             guard pkg.packageType == "three_athlete" else { return }
+            sum += max(0, pkg.lessonsRemaining)
+        }
+    }
+    
+    private var classPassesRemaining: Int {
+        packagesService.packages.reduce(into: 0) { sum, pkg in
+            guard pkg.expirationDate >= Date() else { return }
+            guard pkg.packageType == "class_pass" else { return }
             sum += max(0, pkg.lessonsRemaining)
         }
     }

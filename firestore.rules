@@ -173,7 +173,7 @@ service cloud.firestore {
           let allowed = ['packageType', 'totalLessons', 'lessonsUsed', 'purchaseDate', 'expirationDate', 'transactionId'];
           let hasOnlyAllowed = request.resource.data.keys().hasOnly(allowed);
 
-          let typeOk = request.resource.data.packageType in ['single', 'five_pack', 'ten_pack', 'two_athlete', 'three_athlete'];
+          let typeOk = request.resource.data.packageType in ['single', 'five_pack', 'ten_pack', 'two_athlete', 'three_athlete', 'class_pass'];
           let totalOk = request.resource.data.totalLessons in [1, 5, 10];
 
           // lessonsUsed must start at 0 on create

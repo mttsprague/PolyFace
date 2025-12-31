@@ -81,6 +81,7 @@ struct BookView: View {
                     classItem: classItem,
                     classesService: classesService,
                     usersService: usersService,
+                    packagesService: packagesService,
                     onRegistered: {
                         bookingAlert = BookingAlert(title: "Registered!", message: "You're registered for \(classItem.title)")
                         Task { await classesService.loadOpenClasses() }
@@ -567,15 +568,22 @@ private struct ClassRegistrationSheet: View {
     let classItem: GroupClass
     @ObservedObject var classesService: ClassesService
     @ObservedObject var usersService: UsersService
+    @ObservedObject var packagesService: PackagesService
     let onRegistered: () -> Void
     
     @State private var isRegistering = false
     @State private var isAlreadyRegistered = false
     @State private var registrationSuccessful = false
     @State private var errorMessage: String?
-    @State private var paymentSheet: PaymentSheet?
-    @StateObject private var stripeService = StripeService()
-    @StateObject private var customerService = StripeCustomerService()
+    
+    // Find available class pass
+    private var availableClassPass: LessonPackage? {
+        packagesService.packages.first { pkg in
+            pkg.packageType == "class_pass" &&
+            pkg.lessonsRemaining > 0 &&
+            pkg.expirationDate >= Date()
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -676,18 +684,35 @@ private struct ClassRegistrationSheet: View {
                             .padding(.vertical, Spacing.md)
                         }
                     } else if !classItem.isFull {
-                        Button {
-                            Task { await processPaymentAndRegister() }
-                        } label: {
-                            HStack(spacing: Spacing.sm) {
-                                if isRegistering {
-                                    ProgressView().tint(.white)
+                        if availableClassPass != nil {
+                            Button {
+                                Task { await registerWithClassPass() }
+                            } label: {
+                                HStack(spacing: Spacing.sm) {
+                                    if isRegistering {
+                                        ProgressView().tint(.white)
+                                    }
+                                    Text(isRegistering ? "Registering..." : "Use Class Pass & Register")
                                 }
-                                Text(isRegistering ? "Processing..." : "Pay $45 & Register")
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .disabled(isRegistering || isAlreadyRegistered)
+                        } else {
+                            CardView {
+                                VStack(alignment: .leading, spacing: Spacing.sm) {
+                                    HStack(spacing: Spacing.sm) {
+                                        Image(systemName: "exclamationmark.circle.fill")
+                                            .foregroundStyle(AppTheme.warning)
+                                        Text("Class Pass Required")
+                                            .font(.bodyMedium.bold())
+                                            .foregroundStyle(AppTheme.warning)
+                                    }
+                                    Text("You need a class pass to register. Purchase one from the Profile tab to get started.")
+                                        .font(.bodySmall)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                }
                             }
                         }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .disabled(isRegistering || isAlreadyRegistered)
                     } else {
                         CardView {
                             HStack(spacing: Spacing.sm) {
@@ -713,13 +738,52 @@ private struct ClassRegistrationSheet: View {
         }
         .task {
             isAlreadyRegistered = await classesService.isRegistered(for: classItem.id ?? "")
+            // Load packages to check for class passes
+            if packagesService.packages.isEmpty {
+                await packagesService.loadMyPackages()
+            }
         }
-        .paymentSheet(isPresented: Binding(
-            get: { paymentSheet != nil },
-            set: { if !$0 { paymentSheet = nil } }
-        ), paymentSheet: $paymentSheet, onCompletion: handlePaymentCompletion)
     }
     
+    private func registerWithClassPass() async {
+        guard let classId = classItem.id else { return }
+        guard let classPass = availableClassPass, let passId = classPass.id else {
+            errorMessage = "No valid class pass found"
+            return
+        }
+        
+        isRegistering = true
+        errorMessage = nil
+        
+        do {
+            try await classesService.registerForClassWithPass(
+                classId: classId,
+                classPassPackageId: passId
+            )
+            
+            // Success! Reload packages and show success state
+            await packagesService.loadMyPackages()
+            await classesService.loadMyRegisteredClasses()
+            
+            registrationSuccessful = true
+            errorMessage = nil
+            
+            // Wait a moment for user to see success state
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            
+            onRegistered()
+            dismiss()
+        } catch {
+            errorMessage = "Registration failed: \(error.localizedDescription)"
+        }
+        
+        isRegistering = false
+    }
+}
+
+// MARK: - Old Payment-based Registration (Deprecated)
+
+extension ClassRegistrationSheet {
     private func processPaymentAndRegister() async {
         guard let classId = classItem.id else { return }
         let trainerId = classItem.trainerId

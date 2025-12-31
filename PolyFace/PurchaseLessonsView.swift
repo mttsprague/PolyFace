@@ -98,6 +98,7 @@ struct PurchaseLessonsView: View {
                     packageCard(option: .threeAthlete)
                     packageCard(option: .fivePack)
                     packageCard(option: .tenPack)
+                    packageCard(option: .classPass)
                 }
                 .padding(.horizontal)
 
@@ -153,7 +154,7 @@ struct PurchaseLessonsView: View {
     // MARK: - Package Options
 
     private enum PackageOption: CaseIterable, Equatable {
-        case single, twoAthlete, threeAthlete, fivePack, tenPack
+        case single, twoAthlete, threeAthlete, fivePack, tenPack, classPass
 
         var title: String {
             switch self {
@@ -162,6 +163,7 @@ struct PurchaseLessonsView: View {
             case .threeAthlete: return "3-Athlete Private Lesson"
             case .fivePack: return "5 Private Lessons"
             case .tenPack: return "10 Private Lessons"
+            case .classPass: return "Class Pass"
             }
         }
 
@@ -172,6 +174,7 @@ struct PurchaseLessonsView: View {
             case .threeAthlete: return "Train with two partners"
             case .fivePack: return "Save $25"
             case .tenPack: return "Save $100"
+            case .classPass: return "Register for group classes"
             }
         }
 
@@ -183,6 +186,7 @@ struct PurchaseLessonsView: View {
             case .threeAthlete: return "three_athlete"
             case .fivePack: return "five_pack"
             case .tenPack: return "ten_pack"
+            case .classPass: return "class_pass"
             }
         }
 
@@ -193,6 +197,7 @@ struct PurchaseLessonsView: View {
             case .threeAthlete: return 1
             case .fivePack: return 5
             case .tenPack: return 10
+            case .classPass: return 1
             }
         }
 
@@ -204,6 +209,7 @@ struct PurchaseLessonsView: View {
             case .threeAthlete: return "$180"
             case .fivePack: return "$375"
             case .tenPack: return "$700"
+            case .classPass: return "$45"
             }
         }
         
@@ -215,6 +221,7 @@ struct PurchaseLessonsView: View {
             case .threeAthlete: return 18000  // $180
             case .fivePack: return 37500  // $375
             case .tenPack: return 70000  // $700
+            case .classPass: return 4500  // $45
             }
         }
     }

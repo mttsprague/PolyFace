@@ -93,6 +93,8 @@ struct PurchaseLessonsView: View {
                 // Package options
                 VStack(spacing: 14) {
                     packageCard(option: .single)
+                    packageCard(option: .twoAthlete)
+                    packageCard(option: .threeAthlete)
                     packageCard(option: .fivePack)
                     packageCard(option: .tenPack)
                 }
@@ -150,11 +152,13 @@ struct PurchaseLessonsView: View {
     // MARK: - Package Options
 
     private enum PackageOption: CaseIterable, Equatable {
-        case single, fivePack, tenPack
+        case single, twoAthlete, threeAthlete, fivePack, tenPack
 
         var title: String {
             switch self {
             case .single: return "Single Private Lesson"
+            case .twoAthlete: return "2-Athlete Private Lesson"
+            case .threeAthlete: return "3-Athlete Private Lesson"
             case .fivePack: return "5 Private Lessons"
             case .tenPack: return "10 Private Lessons"
             }
@@ -163,6 +167,8 @@ struct PurchaseLessonsView: View {
         var subtitle: String? {
             switch self {
             case .single: return nil
+            case .twoAthlete: return "Train with a partner"
+            case .threeAthlete: return "Train with two partners"
             case .fivePack: return "Save $25"
             case .tenPack: return "Save $100"
             }
@@ -172,6 +178,8 @@ struct PurchaseLessonsView: View {
         var packageType: String {
             switch self {
             case .single: return "single"
+            case .twoAthlete: return "two_athlete"
+            case .threeAthlete: return "three_athlete"
             case .fivePack: return "five_pack"
             case .tenPack: return "ten_pack"
             }
@@ -180,6 +188,8 @@ struct PurchaseLessonsView: View {
         var totalLessons: Int {
             switch self {
             case .single: return 1
+            case .twoAthlete: return 1
+            case .threeAthlete: return 1
             case .fivePack: return 5
             case .tenPack: return 10
             }
@@ -189,6 +199,8 @@ struct PurchaseLessonsView: View {
         var displayPrice: String {
             switch self {
             case .single: return "$80"
+            case .twoAthlete: return "$140"
+            case .threeAthlete: return "$180"
             case .fivePack: return "$375"
             case .tenPack: return "$700"
             }
@@ -198,6 +210,8 @@ struct PurchaseLessonsView: View {
         var amountInCents: Int {
             switch self {
             case .single: return 8000  // $80
+            case .twoAthlete: return 14000  // $140
+            case .threeAthlete: return 18000  // $180
             case .fivePack: return 37500  // $375
             case .tenPack: return 70000  // $700
             }

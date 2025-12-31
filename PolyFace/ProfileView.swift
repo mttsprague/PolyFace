@@ -83,6 +83,7 @@ private struct SignedInProfileScreen: View {
     @ObservedObject var bookingsService: BookingsService
     @ObservedObject var scheduleService: ScheduleService
     @StateObject private var trainersService = TrainersService()
+    @StateObject private var classesService = ClassesService()
 
     @State private var tab: Tab = .schedule
     enum Tab: String { case schedule = "SCHEDULE", passes = "PASSES", wallet = "WALLET" }
@@ -107,11 +108,15 @@ private struct SignedInProfileScreen: View {
             if trainersService.trainers.isEmpty {
                 await trainersService.loadAll()
             }
+            if classesService.upcomingClasses.isEmpty {
+                await classesService.loadUpcomingClasses()
+            }
         }
         .refreshable {
             await usersService.loadCurrentUserIfAvailable()
             await packagesService.loadMyPackages()
             await bookingsService.loadMyBookings()
+            await classesService.loadUpcomingClasses()
         }
     }
 
@@ -210,33 +215,58 @@ private struct SignedInProfileScreen: View {
 
     private var scheduleTab: some View {
         VStack(spacing: 16) {
-            // Next Lesson card
+            // Next Event card (lesson or class)
             card {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Next Lesson")
+                        Text("Next Event")
                             .font(.title3.bold())
                             .foregroundStyle(Brand.primary)
-                        if let next = nextUpcomingBooking() {
-                            if let start = next.startTime, let end = next.endTime {
-                                Text("\(dateString(start)) • \(timeString(start))–\(timeString(end))")
+                        if let nextEvent = nextUpcomingEvent() {
+                            switch nextEvent {
+                            case .lesson(let booking):
+                                if let start = booking.startTime, let end = booking.endTime {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "person.fill").foregroundStyle(.secondary)
+                                        Text("Lesson")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Text("\(dateString(start)) • \(timeString(start))–\(timeString(end))")
+                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "person.fill").foregroundStyle(.secondary)
+                                        Text(trainerName(for: booking.trainerUID))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
+                                        Text("\(venueName) • \(venueCityStateZip)")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            case .classItem(let classItem):
+                                HStack(spacing: 6) {
+                                    Image(systemName: "sportscourt.fill").foregroundStyle(Brand.secondary)
+                                    Text("Class")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(Brand.secondary)
+                                }
+                                Text("\(dateString(classItem.startTime)) • \(timeString(classItem.startTime))–\(timeString(classItem.endTime))")
                                     .foregroundStyle(.secondary)
                                 HStack(spacing: 6) {
                                     Image(systemName: "person.fill").foregroundStyle(.secondary)
-                                    Text(trainerName(for: next.trainerUID))
+                                    Text(trainerName(for: classItem.trainerUID ?? ""))
                                         .foregroundStyle(.secondary)
                                 }
                                 HStack(spacing: 6) {
                                     Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
-                                    Text("\(venueName) • \(venueCityStateZip)")
+                                    Text(classItem.location)
                                         .foregroundStyle(.secondary)
                                 }
-                            } else {
-                                Text("Your next booked lesson will appear here.")
-                                    .foregroundStyle(.secondary)
                             }
                         } else {
-                            Text("Your next booked lessons will appear here.")
+                            Text("Your next events will appear here.")
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -244,7 +274,7 @@ private struct SignedInProfileScreen: View {
                 }
             }
 
-            // Moved button below the card, renamed to "View Full Schedule"
+            // View Full Schedule button
             NavigationLink {
                 MyUpcomingLessonsView(bookingsService: bookingsService,
                                       trainersService: trainersService,
@@ -265,38 +295,58 @@ private struct SignedInProfileScreen: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
 
-            // Previous lessons card
+            // All upcoming events
             card {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Previous")
+                    Text("Upcoming")
                         .font(.title3.bold())
                         .foregroundStyle(Brand.primary)
-                    let prev = previousBookings()
-                    if prev.isEmpty {
-                        Text("No previous lessons found.")
+                    let upcoming = allUpcomingEvents()
+                    if upcoming.isEmpty {
+                        Text("No upcoming lessons or classes.")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(prev) { booking in
+                        ForEach(upcoming.indices, id: \.self) { idx in
+                            let event = upcoming[idx]
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Lesson • \(booking.status.capitalized)")
-                                    .font(.headline)
-                                if let s = booking.startTime, let e = booking.endTime {
-                                    Text("\(dateString(s)) • \(timeString(s))–\(timeString(e))")
+                                switch event {
+                                case .lesson(let booking):
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "person.fill").foregroundStyle(.secondary)
+                                        Text("Lesson • \(booking.status.capitalized)")
+                                            .font(.headline)
+                                    }
+                                    if let s = booking.startTime, let e = booking.endTime {
+                                        Text("\(dateString(s)) • \(timeString(s))–\(timeString(e))")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "person.fill").foregroundStyle(.secondary)
+                                        Text(trainerName(for: booking.trainerUID))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                case .classItem(let classItem):
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "sportscourt.fill").foregroundStyle(Brand.secondary)
+                                        Text("Class • \(classItem.title)")
+                                            .font(.headline)
+                                    }
+                                    Text("\(dateString(classItem.startTime)) • \(timeString(classItem.startTime))–\(timeString(classItem.endTime))")
                                         .foregroundStyle(.secondary)
-                                }
-                                HStack(spacing: 6) {
-                                    Image(systemName: "person.fill").foregroundStyle(.secondary)
-                                    Text(trainerName(for: booking.trainerUID))
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "person.fill").foregroundStyle(.secondary)
+                                        Text(trainerName(for: classItem.trainerUID ?? ""))
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                                 HStack(spacing: 6) {
                                     Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
-                                    Text("\(venueName) • \(venueCityStateZip)")
+                                    Text(venueName)
                                         .foregroundStyle(.secondary)
                                 }
                             }
                             .padding(.vertical, 6)
-                            if booking.id != prev.last?.id {
+                            if idx < upcoming.count - 1 {
                                 Divider().opacity(0.2)
                             }
                         }
@@ -314,67 +364,16 @@ private struct SignedInProfileScreen: View {
             if packagesService.isLoading {
                 ProgressView().padding()
             } else {
-                // Lessons summary card (no inline Buy button)
-                card {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Lessons")
-                            .font(.title3.bold())
-                            .foregroundStyle(Brand.primary)
+                // Private Lesson Passes
+                passTypeCard(title: "Private Lesson Passes", count: privatePassesRemaining, icon: "person.fill")
+                
+                // 2-Athlete Passes
+                passTypeCard(title: "2-Athlete Passes", count: twoAthletePassesRemaining, icon: "person.2.fill")
+                
+                // 3-Athlete Passes
+                passTypeCard(title: "3-Athlete Passes", count: threeAthletePassesRemaining, icon: "person.3.fill")
 
-                        Text("Passes Remaining")
-                            .foregroundStyle(.secondary)
-
-                        Text("\(remainingCredits)")
-                            .font(.system(size: 34, weight: .bold))
-                            .foregroundStyle(.primary)
-                    }
-                }
-
-                // Individual available lessons with expiration date and header
-                if !expandedCredits.isEmpty {
-                    card {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Available Lessons")
-                                .font(.title3.bold())
-                                .foregroundStyle(Brand.primary)
-
-                            // Header row
-                            HStack {
-                                Text("Lesson")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text("Expiration Date")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 4)
-
-                            ForEach(expandedCredits.indices, id: \.self) { idx in
-                                let credit = expandedCredits[idx]
-                                HStack {
-                                    Text("Lesson")
-                                        .foregroundStyle(.primary)
-                                    Spacer()
-                                    Text(dateString(credit.expirationDate))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.vertical, 6)
-
-                                if idx < expandedCredits.count - 1 {
-                                    Divider().opacity(0.15)
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    card {
-                        Text("No available lessons.")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                // Bottom Buy button (single purchase entry point)
+                // Bottom Buy button
                 NavigationLink {
                     PurchaseLessonsView(packagesService: packagesService)
                 } label: {
@@ -394,6 +393,36 @@ private struct SignedInProfileScreen: View {
             }
         }
         .padding(.horizontal, 16)
+    }
+    
+    private func passTypeCard(title: String, count: Int, icon: String) -> some View {
+        card {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Brand.primary.opacity(0.15))
+                    Image(systemName: icon)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(Brand.primary)
+                }
+                .frame(width: 56, height: 56)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("\(count) remaining")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Text("\(count)")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(Brand.primary)
+            }
+        }
     }
 
     // MARK: WALLET tab (placeholder)
@@ -466,12 +495,82 @@ private struct SignedInProfileScreen: View {
             .filter { ($0.endTime ?? now) < now }
             .sorted { ($0.startTime ?? .distantPast) > ($1.startTime ?? .distantPast) }
     }
+    
+    // MARK: Event helpers
+    
+    private enum UpcomingEvent: Identifiable {
+        case lesson(Booking)
+        case classItem(GroupClass)
+        
+        var id: String {
+            switch self {
+            case .lesson(let booking): return "lesson-\(booking.id ?? "")"
+            case .classItem(let classItem): return "class-\(classItem.id ?? "")"
+            }
+        }
+        
+        var date: Date {
+            switch self {
+            case .lesson(let booking): return booking.startTime ?? .distantFuture
+            case .classItem(let classItem): return classItem.startTime
+            }
+        }
+    }
+    
+    private func nextUpcomingEvent() -> UpcomingEvent? {
+        allUpcomingEvents().first
+    }
+    
+    private func allUpcomingEvents() -> [UpcomingEvent] {
+        let now = Date()
+        var events: [UpcomingEvent] = []
+        
+        // Add upcoming lessons
+        let upcomingLessons = bookingsService.myBookings
+            .filter { ($0.startTime ?? now) >= now }
+            .map { UpcomingEvent.lesson($0) }
+        events.append(contentsOf: upcomingLessons)
+        
+        // Add all upcoming classes (user must be registered to see them here)
+        // Note: This will show all classes; filtering by registration would require async
+        let upcomingClasses = classesService.upcomingClasses
+            .filter { $0.startTime >= now }
+            .map { UpcomingEvent.classItem($0) }
+        events.append(contentsOf: upcomingClasses)
+        
+        // Sort by date
+        return events.sorted { $0.date < $1.date }
+    }
 
     // MARK: Remaining credits + expanded credit list
 
     private var remainingCredits: Int {
         packagesService.packages.reduce(into: 0) { sum, pkg in
             guard pkg.expirationDate >= Date() else { return }
+            sum += max(0, pkg.lessonsRemaining)
+        }
+    }
+    
+    private var privatePassesRemaining: Int {
+        packagesService.packages.reduce(into: 0) { sum, pkg in
+            guard pkg.expirationDate >= Date() else { return }
+            guard ["single", "five_pack", "ten_pack"].contains(pkg.packageType) else { return }
+            sum += max(0, pkg.lessonsRemaining)
+        }
+    }
+    
+    private var twoAthletePassesRemaining: Int {
+        packagesService.packages.reduce(into: 0) { sum, pkg in
+            guard pkg.expirationDate >= Date() else { return }
+            guard pkg.packageType == "two_athlete" else { return }
+            sum += max(0, pkg.lessonsRemaining)
+        }
+    }
+    
+    private var threeAthletePassesRemaining: Int {
+        packagesService.packages.reduce(into: 0) { sum, pkg in
+            guard pkg.expirationDate >= Date() else { return }
+            guard pkg.packageType == "three_athlete" else { return }
             sum += max(0, pkg.lessonsRemaining)
         }
     }

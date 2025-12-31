@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import StripePaymentSheet
 
 struct BookView: View {
     @ObservedObject var trainersService: TrainersService
@@ -541,6 +542,8 @@ private struct ClassRegistrationSheet: View {
     @State private var isRegistering = false
     @State private var isAlreadyRegistered = false
     @State private var errorMessage: String?
+    @State private var paymentSheet: PaymentSheet?
+    @StateObject private var stripeService = StripeService()
     
     var body: some View {
         NavigationStack {
@@ -587,6 +590,16 @@ private struct ClassRegistrationSheet: View {
                                 Text("\(classItem.currentParticipants) / \(classItem.maxParticipants) registered")
                                     .font(.bodyLarge)
                             }
+                            
+                            Divider()
+                            
+                            HStack(spacing: Spacing.xxs) {
+                                Image(systemName: "dollarsign.circle")
+                                Text("$45.00")
+                                    .font(.bodyLarge)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(AppTheme.primary)
+                            }
                         }
                         .foregroundStyle(AppTheme.textPrimary)
                     }
@@ -615,13 +628,13 @@ private struct ClassRegistrationSheet: View {
                         }
                     } else if !classItem.isFull {
                         Button {
-                            Task { await registerForClass() }
+                            Task { await processPaymentAndRegister() }
                         } label: {
                             HStack(spacing: Spacing.sm) {
                                 if isRegistering {
                                     ProgressView().tint(.white)
                                 }
-                                Text(isRegistering ? "Registering..." : "Register for Class")
+                                Text(isRegistering ? "Processing..." : "Pay $45 & Register")
                             }
                         }
                         .buttonStyle(PrimaryButtonStyle())
@@ -652,6 +665,58 @@ private struct ClassRegistrationSheet: View {
         .task {
             isAlreadyRegistered = await classesService.isRegistered(for: classItem.id ?? "")
         }
+        .paymentSheet(isPresented: Binding(
+            get: { paymentSheet != nil },
+            set: { if !$0 { paymentSheet = nil } }
+        ), paymentSheet: $paymentSheet, onCompletion: handlePaymentCompletion)
+    }
+    
+    private func processPaymentAndRegister() async {
+        guard let classId = classItem.id else { return }
+        guard let trainerId = classItem.trainerUID else {
+            errorMessage = "Class trainer information missing"
+            return
+        }
+        
+        isRegistering = true
+        errorMessage = nil
+        
+        do {
+            // Create payment intent for class registration
+            let result = try await stripeService.createPaymentIntent(
+                packageType: "class_registration",
+                amount: 4500, // $45
+                trainerId: trainerId
+            )
+            
+            // Configure and present payment sheet
+            var configuration = PaymentSheet.Configuration()
+            configuration.merchantDisplayName = "Polyface Volleyball Academy"
+            
+            paymentSheet = PaymentSheet(
+                paymentIntentClientSecret: result.clientSecret,
+                configuration: configuration
+            )
+        } catch {
+            errorMessage = "Failed to initialize payment: \(error.localizedDescription)"
+            isRegistering = false
+        }
+    }
+    
+    private func handlePaymentCompletion(_ result: PaymentSheetResult) {
+        Task {
+            switch result {
+            case .completed:
+                // Payment successful, now register for class
+                await registerForClass()
+            case .canceled:
+                errorMessage = "Payment canceled"
+                isRegistering = false
+            case .failed(let error):
+                errorMessage = "Payment failed: \(error.localizedDescription)"
+                isRegistering = false
+            }
+        }
     }
     
     private func registerForClass() async {
@@ -660,9 +725,6 @@ private struct ClassRegistrationSheet: View {
         // Get user's name from UsersService
         let firstName = usersService.currentUser?.firstName ?? "Unknown"
         let lastName = usersService.currentUser?.lastName ?? "User"
-        
-        isRegistering = true
-        errorMessage = nil
         
         do {
             try await classesService.registerForClass(

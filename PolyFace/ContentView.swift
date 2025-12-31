@@ -45,15 +45,15 @@ struct AppRootView: View {
                             Label("Profile", systemImage: "person.crop.circle")
                         }
 
+                    MorePlaceholderView()
+                        .tabItem {
+                            Label("More", systemImage: "ellipsis.circle")
+                        }
+                    
                     if adminService.isAdmin {
                         AdminPanelView()
                             .tabItem {
                                 Label("Admin", systemImage: "star.fill")
-                            }
-                    } else {
-                        MorePlaceholderView()
-                            .tabItem {
-                                Label("More", systemImage: "ellipsis.circle")
                             }
                     }
                 }

@@ -22,7 +22,7 @@ struct ProfileView: View {
     private var isSignedIn: Bool { Auth.auth().currentUser != nil }
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Group {
                 if isSignedIn {
                     SignedInProfileScreen(usersService: usersService,

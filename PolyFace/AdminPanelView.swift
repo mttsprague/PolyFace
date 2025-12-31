@@ -15,7 +15,7 @@ struct AdminPanelView: View {
     @State private var alertItem: AlertItem?
     
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Group {
                 if adminService.isLoading {
                     ProgressView("Checking permissions...")

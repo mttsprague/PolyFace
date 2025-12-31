@@ -10,7 +10,7 @@ import SwiftUI
 
 struct MorePlaceholderView: View {
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.xl) {
                     // Header

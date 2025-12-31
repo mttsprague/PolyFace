@@ -303,25 +303,20 @@ service cloud.firestore {
         
         // Validate admin class booking writes
         function isValidClassBookingWrite() {
-          // Must have required fields for class booking
-          let hasStartTime = "startTime" in request.resource.data;
-          let hasEndTime = "endTime" in request.resource.data;
-          let hasStatus = "status" in request.resource.data;
-          let hasClientId = "clientId" in request.resource.data;
-          let hasClassId = "classId" in request.resource.data;
-          let hasIsClassBooking = "isClassBooking" in request.resource.data;
+          let data = request.resource.data;
           
-          // Validate types
-          let startTypeOk = request.resource.data.startTime is timestamp;
-          let endTypeOk = request.resource.data.endTime is timestamp;
-          let statusOk = request.resource.data.status == "booked";
-          let clientIdOk = request.resource.data.clientId is string;
-          let classIdOk = request.resource.data.classId is string;
-          let isClassBookingOk = request.resource.data.isClassBooking == true;
-          let timeOrderOk = request.resource.data.startTime < request.resource.data.endTime;
+          // Must have required fields and correct types
+          let hasRequiredFields = ("startTime" in data) && ("endTime" in data) 
+                                  && ("status" in data) && ("clientId" in data)
+                                  && ("classId" in data) && ("isClassBooking" in data);
           
-          return hasStartTime && hasEndTime && hasStatus && hasClientId && hasClassId && hasIsClassBooking
-                 && startTypeOk && endTypeOk && statusOk && clientIdOk && classIdOk && isClassBookingOk && timeOrderOk;
+          let validTypes = (data.startTime is timestamp) && (data.endTime is timestamp)
+                           && (data.status == "booked") && (data.clientId is string)
+                           && (data.classId is string) && (data.isClassBooking == true);
+          
+          let timeOrderOk = data.startTime < data.endTime;
+          
+          return hasRequiredFields && validTypes && timeOrderOk;
         }
       }
     }

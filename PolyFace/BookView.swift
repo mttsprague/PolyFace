@@ -54,8 +54,8 @@ struct BookView: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal, Spacing.lg)
-                    .onChange(of: mode) {
-                        if mode == .classes {
+                    .onChange(of: mode) { _, newMode in
+                        if newMode == .classes {
                             Task { await classesService.loadOpenClasses() }
                         }
                     }
@@ -111,7 +111,8 @@ struct BookView: View {
         .onChange(of: initialMode) { _, newValue in
             mode = newValue == 1 ? .classes : .lessons
         }
-        .onChange(of: selectedTrainer) {
+        // Observe an Equatable proxy (id) rather than the model itself
+        .onChange(of: selectedTrainer?.id) {
             Task {
                 await loadMonthIfPossible()
                 await loadDayIfPossible()
@@ -279,7 +280,7 @@ struct BookView: View {
                 } else {
                     Task { await performBooking() }
                 }
-            } label {
+            } label: {
                 HStack(spacing: Spacing.sm) {
                     if bookingInFlight {
                         ProgressView()
@@ -719,17 +720,14 @@ private struct ClassRegistrationSheet: View {
     
     private func processPaymentAndRegister() async {
         guard let classId = classItem.id else { return }
-        guard let trainerId = classItem.trainerUID else {
-            errorMessage = "Class trainer information missing"
-            return
-        }
+        let trainerId = classItem.trainerId
         
         isRegistering = true
         errorMessage = nil
         
         do {
             // Create payment intent for class registration
-            let result = try await stripeService.createPaymentIntent(
+            let clientSecret = try await stripeService.createPaymentIntent(
                 packageType: "class_registration",
                 amount: 4500, // $45
                 trainerId: trainerId
@@ -740,7 +738,7 @@ private struct ClassRegistrationSheet: View {
             configuration.merchantDisplayName = "Polyface Volleyball Academy"
             
             paymentSheet = PaymentSheet(
-                paymentIntentClientSecret: result.clientSecret,
+                paymentIntentClientSecret: clientSecret,
                 configuration: configuration
             )
         } catch {

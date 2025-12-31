@@ -17,24 +17,32 @@ struct AppRootView: View {
     @StateObject private var bookingsService = BookingsService()
     @StateObject private var classesService = ClassesService()
     @StateObject private var adminService = AdminService()
+    
+    @State private var selectedTab = 0
+    @State private var bookViewMode = 0
 
     var body: some View {
         Group {
             if auth.isReady {
-                TabView {
+                TabView(selection: $selectedTab) {
                     HomeView(usersService: usersService, 
                             scheduleService: scheduleService,
-                            classesService: classesService)
+                            classesService: classesService,
+                            selectedTab: $selectedTab,
+                            bookViewMode: $bookViewMode)
                         .tabItem {
                             Label("Home", systemImage: "house.fill")
                         }
+                        .tag(0)
 
                     BookView(trainersService: trainersService,
                              scheduleService: scheduleService,
-                             packagesService: packagesService)
+                             packagesService: packagesService,
+                             initialMode: $bookViewMode)
                         .tabItem {
                             Label("Book", systemImage: "calendar.badge.plus")
                         }
+                        .tag(1)
 
                     ProfileView(usersService: usersService,
                                 packagesService: packagesService,
@@ -44,17 +52,20 @@ struct AppRootView: View {
                         .tabItem {
                             Label("Profile", systemImage: "person.crop.circle")
                         }
+                        .tag(2)
 
                     MorePlaceholderView()
                         .tabItem {
                             Label("More", systemImage: "ellipsis.circle")
                         }
+                        .tag(3)
                     
                     if adminService.isAdmin {
                         AdminPanelView()
                             .tabItem {
                                 Label("Admin", systemImage: "star.fill")
                             }
+                            .tag(4)
                     }
                 }
                 .tint(AppTheme.primary)

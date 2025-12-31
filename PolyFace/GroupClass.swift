@@ -17,6 +17,8 @@ struct GroupClass: Identifiable, Codable, Hashable {
     var currentParticipants: Int
     let location: String
     let isOpenForRegistration: Bool
+    let trainerId: String
+    let trainerName: String
     let createdBy: String // Admin user ID
     let createdAt: Date
     

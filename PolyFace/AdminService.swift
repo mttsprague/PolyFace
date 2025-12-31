@@ -54,7 +54,9 @@ final class AdminService: ObservableObject {
         startTime: Date,
         endTime: Date,
         maxParticipants: Int,
-        location: String
+        location: String,
+        trainerId: String,
+        trainerName: String
     ) async throws {
         guard let uid = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "AdminService", code: -1,
@@ -75,11 +77,28 @@ final class AdminService: ObservableObject {
             "currentParticipants": 0,
             "location": location,
             "isOpenForRegistration": true,
+            "trainerId": trainerId,
+            "trainerName": trainerName,
             "createdBy": uid,
             "createdAt": Timestamp(date: Date())
         ]
         
-        try await db.collection("classes").addDocument(data: classData)
+        let classRef = try await db.collection("classes").addDocument(data: classData)
+        
+        // Create a booking in the trainer's schedule to block off the time
+        let bookingData: [String: Any] = [
+            "startTime": Timestamp(date: startTime),
+            "endTime": Timestamp(date: endTime),
+            "status": "booked",
+            "clientId": "CLASS",
+            "clientName": title,
+            "classId": classRef.documentID,
+            "isClassBooking": true,
+            "bookedAt": Timestamp(date: Date())
+        ]
+        
+        try await db.collection("trainers").document(trainerId)
+            .collection("schedules").addDocument(data: bookingData)
     }
     
     // Toggle class registration status

@@ -14,6 +14,9 @@ struct HomeView: View {
     @ObservedObject var scheduleService: ScheduleService
     @ObservedObject var classesService: ClassesService
     @Environment(\.openURL) private var openURL
+    
+    @Binding var selectedTab: Int
+    @Binding var bookViewMode: Int
 
     private let venueName = "Midtown"
     private let venueAddressLine = "104 North Tuxedo Avenue"
@@ -109,7 +112,13 @@ struct HomeView: View {
                         } else {
                             VStack(spacing: Spacing.sm) {
                                 ForEach(classesService.upcomingClasses) { groupClass in
-                                    ClassPreviewRow(groupClass: groupClass)
+                                    Button {
+                                        bookViewMode = 1 // Switch to classes mode
+                                        selectedTab = 1 // Switch to Book tab
+                                    } label: {
+                                        ClassPreviewRow(groupClass: groupClass)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }

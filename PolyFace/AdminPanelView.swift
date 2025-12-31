@@ -10,6 +10,7 @@ import SwiftUI
 struct AdminPanelView: View {
     @StateObject private var adminService = AdminService()
     @StateObject private var classesService = ClassesService()
+    @StateObject private var trainersService = TrainersService()
     @State private var showingCreateClass = false
     @State private var alertItem: AlertItem?
     
@@ -45,7 +46,7 @@ struct AdminPanelView: View {
                 }
             }
             .sheet(isPresented: $showingCreateClass) {
-                CreateClassView(adminService: adminService) {
+                CreateClassView(adminService: adminService, trainersService: trainersService) {
                     Task { await classesService.loadOpenClasses() }
                 }
             }
@@ -57,6 +58,7 @@ struct AdminPanelView: View {
             await adminService.checkAdminStatus()
             if adminService.isAdmin {
                 await classesService.loadOpenClasses()
+                await trainersService.loadTrainers()
             }
         }
     }
@@ -263,6 +265,7 @@ struct AdminClassCard: View {
 struct CreateClassView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var adminService: AdminService
+    @ObservedObject var trainersService: TrainersService
     let onCreated: () -> Void
     
     @State private var title = ""
@@ -271,6 +274,7 @@ struct CreateClassView: View {
     @State private var endDate = Date().addingTimeInterval(3600)
     @State private var maxParticipants = 20
     @State private var location = "Midtown"
+    @State private var selectedTrainer: Trainer?
     @State private var isCreating = false
     @State private var errorMessage: String?
     
@@ -282,6 +286,15 @@ struct CreateClassView: View {
                     TextField("Description", text: $description, axis: .vertical)
                         .lineLimit(3...6)
                     TextField("Location", text: $location)
+                }
+                
+                Section("Head Trainer") {
+                    Picker("Select Trainer", selection: $selectedTrainer) {
+                        Text("Select a trainer").tag(nil as Trainer?)
+                        ForEach(trainersService.trainers) { trainer in
+                            Text(trainer.name).tag(trainer as Trainer?)
+                        }
+                    }
                 }
                 
                 Section("Schedule") {
@@ -311,13 +324,18 @@ struct CreateClassView: View {
                     Button("Create") {
                         Task { await createClass() }
                     }
-                    .disabled(isCreating || title.isEmpty || description.isEmpty)
+                    .disabled(isCreating || title.isEmpty || description.isEmpty || selectedTrainer == nil)
                 }
             }
         }
     }
     
     private func createClass() async {
+        guard let trainer = selectedTrainer else {
+            errorMessage = "Please select a head trainer"
+            return
+        }
+        
         isCreating = true
         errorMessage = nil
         
@@ -328,7 +346,9 @@ struct CreateClassView: View {
                 startTime: startDate,
                 endTime: endDate,
                 maxParticipants: maxParticipants,
-                location: location
+                location: location,
+                trainerId: trainer.id,
+                trainerName: trainer.name
             )
             onCreated()
             dismiss()

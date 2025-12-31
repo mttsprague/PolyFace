@@ -14,6 +14,8 @@ struct BookView: View {
     @ObservedObject var packagesService: PackagesService
     @StateObject private var bookingManager = BookingManager()
     @StateObject private var classesService = ClassesService()
+    
+    @Binding var initialMode: Int
 
     @State private var mode: Mode = .lessons
     @State private var selectedTrainer: Trainer?
@@ -98,6 +100,13 @@ struct BookView: View {
                 await loadDayIfPossible()
             }
             await packagesService.loadMyPackages()
+        }
+        .onAppear {
+            // Sync mode with initialMode binding
+            mode = initialMode == 1 ? .classes : .lessons
+        }
+        .onChange(of: initialMode) { _, newValue in
+            mode = newValue == 1 ? .classes : .lessons
         }
         .onChange(of: selectedTrainer) {
             Task {

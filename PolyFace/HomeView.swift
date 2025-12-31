@@ -249,7 +249,11 @@ private struct ClassPreviewRow: View {
             }
         }
         .task {
-            isRegistered = await classesService.isRegistered(for: groupClass.id)
+            if let id = groupClass.id {
+                isRegistered = await classesService.isRegistered(for: id)
+            } else {
+                isRegistered = false
+            }
         }
     }
 }

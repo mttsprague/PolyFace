@@ -61,6 +61,13 @@ struct AppRootView: View {
                 .task {
                     await adminService.checkAdminStatus()
                 }
+                .onChange(of: auth.isReady) { _, isReady in
+                    if isReady {
+                        Task {
+                            await adminService.checkAdminStatus()
+                        }
+                    }
+                }
             } else {
                 VStack(spacing: Spacing.lg) {
                     ProgressView()

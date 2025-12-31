@@ -20,17 +20,27 @@ final class AdminService: ObservableObject {
     // Check if current user is admin
     func checkAdminStatus() async {
         guard let uid = Auth.auth().currentUser?.uid else {
+            print("❌ No current user UID")
             isAdmin = false
             return
         }
         
+        print("🔍 Checking admin status for UID: \(uid)")
         isLoading = true
         
         do {
             let doc = try await db.collection("users").document(uid).getDocument()
-            isAdmin = doc.data()?["isAdmin"] as? Bool ?? false
+            if !doc.exists {
+                print("❌ User document does not exist for UID: \(uid)")
+                isAdmin = false
+            } else {
+                let data = doc.data() ?? [:]
+                print("📄 User document data: \(data)")
+                isAdmin = data["isAdmin"] as? Bool ?? false
+                print("✅ isAdmin = \(isAdmin)")
+            }
         } catch {
-            print("Error checking admin status: \(error)")
+            print("❌ Error checking admin status: \(error)")
             isAdmin = false
         }
         

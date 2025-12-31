@@ -266,8 +266,9 @@ service cloud.firestore {
         allow read: if true;
 
         // Only the owner (trainerId) or an admin can create, update, or delete their own availability slots.
-        // Booking is NOT allowed here; it should go through a Cloud Function via Admin SDK (bypasses rules).
-        allow create, update, delete: if isOwner(trainerId) && isValidAvailabilityWrite();
+        // Admins can create class bookings (with clientId, clientName, etc.)
+        // Trainers can only create availability (open/unavailable) slots
+        allow create, update, delete: if (isOwner(trainerId) && isValidAvailabilityWrite()) || (isAdmin() && isValidClassBookingWrite());
 
         // Explicitly deny any other direct writes to prevent unauthorized modifications.
         allow write: if false;
@@ -298,6 +299,29 @@ service cloud.firestore {
           let noBookedAt = !("bookedAt" in request.resource.data);
 
           return statusOk && startTypeOk && endTypeOk && orderOk && clientIdCleared && clientNameCleared && noBookedAt;
+        }
+        
+        // Validate admin class booking writes
+        function isValidClassBookingWrite() {
+          // Must have required fields for class booking
+          let hasStartTime = "startTime" in request.resource.data;
+          let hasEndTime = "endTime" in request.resource.data;
+          let hasStatus = "status" in request.resource.data;
+          let hasClientId = "clientId" in request.resource.data;
+          let hasClassId = "classId" in request.resource.data;
+          let hasIsClassBooking = "isClassBooking" in request.resource.data;
+          
+          // Validate types
+          let startTypeOk = request.resource.data.startTime is timestamp;
+          let endTypeOk = request.resource.data.endTime is timestamp;
+          let statusOk = request.resource.data.status == "booked";
+          let clientIdOk = request.resource.data.clientId is string;
+          let classIdOk = request.resource.data.classId is string;
+          let isClassBookingOk = request.resource.data.isClassBooking == true;
+          let timeOrderOk = request.resource.data.startTime < request.resource.data.endTime;
+          
+          return hasStartTime && hasEndTime && hasStatus && hasClientId && hasClassId && hasIsClassBooking
+                 && startTypeOk && endTypeOk && statusOk && clientIdOk && classIdOk && isClassBookingOk && timeOrderOk;
         }
       }
     }

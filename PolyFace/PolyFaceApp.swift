@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import FirebaseCore
+import StripePaymentSheet
 
 @main
 struct PolyFaceApp: App {
@@ -28,6 +29,9 @@ struct PolyFaceApp: App {
     init() {
         // Configure Firebase
         FirebaseApp.configure()
+        
+        // Configure Stripe
+        StripeAPI.defaultPublishableKey = StripeConfig.publishableKey
     }
 
     var body: some Scene {

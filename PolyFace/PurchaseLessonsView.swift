@@ -1,26 +1,28 @@
 // PurchaseLessonsView.swift
 import SwiftUI
-import StoreKit
+import StripePaymentSheet
+import FirebaseAuth
 
 @MainActor
 struct PurchaseLessonsView: View {
     @ObservedObject var packagesService: PackagesService
-    @StateObject private var purchaseManager = PurchaseManager()
+    @StateObject private var stripeService = StripeService()
 
-    // Trainers dropdown (same wiring as BookView)
+    // Trainers dropdown
     @StateObject private var trainersService = TrainersService()
     @State private var selectedTrainer: Trainer?
 
     @State private var isPurchasing = false
     @State private var alert: AlertItem?
+    @State private var paymentSheet: PaymentSheet?
 
-    // Default expiration policy for newly purchased packages
+    // Default expiration policy
     private let expirationMonths = 12
 
-    // Selected package option (radio-style)
-    @State private var selected: PackageOption = .single
+    // Selected package option
+    @State private var selected: PackageOption = .fivePack
 
-    // Jeff-first ordering for the menu (copied from BookView)
+    // Jeff-first ordering
     private var trainersOrdered: [Trainer] {
         trainersService.trainers.sorted { lhs, rhs in
             let lhsPriority = isJeff(lhs) ? 0 : 1
@@ -35,7 +37,6 @@ struct PurchaseLessonsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-
                 // Big page header
                 Text("Purchase Private Lessons")
                     .font(.system(size: 34, weight: .bold))
@@ -48,7 +49,7 @@ struct PurchaseLessonsView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
 
-                // Trainer dropdown menu (mirrors BookView)
+                // Trainer dropdown menu
                 Menu {
                     ForEach(trainersOrdered, id: \.self) { trainer in
                         Button {
@@ -89,11 +90,11 @@ struct PurchaseLessonsView: View {
                     .foregroundStyle(Brand.primary)
                     .padding(.horizontal)
 
-                // Package options (radio cards)
+                // Package options
                 VStack(spacing: 14) {
                     packageCard(option: .single)
-                    packageCard(option: .five)
-                    packageCard(option: .ten)
+                    packageCard(option: .fivePack)
+                    packageCard(option: .tenPack)
                 }
                 .padding(.horizontal)
 
@@ -114,7 +115,7 @@ struct PurchaseLessonsView: View {
                     .background(Brand.primary)
                     .clipShape(Capsule())
                 }
-                .disabled(isPurchasing || purchaseManager.product == nil)
+                .disabled(isPurchasing || selectedTrainer == nil)
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 12)
@@ -136,33 +137,34 @@ struct PurchaseLessonsView: View {
                     selectedTrainer = trainersService.trainers.first
                 }
             }
-
-            // Load the product used for purchases (all map to this for now)
-            await purchaseManager.loadProduct(identifier: "jeff_lesson")
         }
         .alert(item: $alert) { a in
             Alert(title: Text(a.title), message: Text(a.message), dismissButton: .default(Text("OK")))
         }
+        .paymentSheet(isPresented: Binding(
+            get: { paymentSheet != nil },
+            set: { if !$0 { paymentSheet = nil } }
+        ), paymentSheet: $paymentSheet, onCompletion: handlePaymentCompletion)
     }
 
     // MARK: - Package Options
 
     private enum PackageOption: CaseIterable, Equatable {
-        case single, five, ten
+        case single, fivePack, tenPack
 
         var title: String {
             switch self {
-            case .single: return "Private Lesson"
-            case .five:   return "5 Private Lessons"
-            case .ten:    return "10 Private Lessons"
+            case .single: return "Single Private Lesson"
+            case .fivePack: return "5 Private Lessons"
+            case .tenPack: return "10 Private Lessons"
             }
         }
 
         var subtitle: String? {
             switch self {
             case .single: return nil
-            case .five:   return "Save $25"
-            case .ten:    return "Save $100"
+            case .fivePack: return "Save $25"
+            case .tenPack: return "Save $100"
             }
         }
 
@@ -170,25 +172,34 @@ struct PurchaseLessonsView: View {
         var packageType: String {
             switch self {
             case .single: return "single"
-            case .five:   return "five_pack"
-            case .ten:    return "ten_pack"
+            case .fivePack: return "five_pack"
+            case .tenPack: return "ten_pack"
             }
         }
 
         var totalLessons: Int {
             switch self {
             case .single: return 1
-            case .five:   return 5
-            case .ten:    return 10
+            case .fivePack: return 5
+            case .tenPack: return 10
             }
         }
 
-        // Display prices shown in screenshot (can be swapped to dynamic later)
+        // Updated pricing
         var displayPrice: String {
             switch self {
-            case .single: return "$90"
-            case .five:   return "$425"
-            case .ten:    return "$800"
+            case .single: return "$80"
+            case .fivePack: return "$375"
+            case .tenPack: return "$700"
+            }
+        }
+        
+        // Amount in cents for Stripe
+        var amountInCents: Int {
+            switch self {
+            case .single: return 8000  // $80
+            case .fivePack: return 37500  // $375
+            case .tenPack: return 70000  // $700
             }
         }
     }
@@ -198,7 +209,7 @@ struct PurchaseLessonsView: View {
             withAnimation(.easeInOut(duration: 0.15)) { selected = option }
         } label: {
             HStack(spacing: 12) {
-                // Leading icon in rounded square
+                // Leading icon
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Brand.primary.opacity(0.15))
@@ -208,7 +219,7 @@ struct PurchaseLessonsView: View {
                 }
                 .frame(width: 48, height: 48)
 
-                // Title + optional savings
+                // Title + savings
                 VStack(alignment: .leading, spacing: 4) {
                     Text(option.title)
                         .foregroundStyle(.primary)
@@ -257,7 +268,7 @@ struct PurchaseLessonsView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Helpers (matching BookView behavior)
+    // MARK: - Helpers
 
     private func isJeff(_ trainer: Trainer) -> Bool {
         (trainer.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -267,8 +278,13 @@ struct PurchaseLessonsView: View {
     // MARK: - Purchase flow
 
     private func purchaseSelectedOption() async {
-        guard purchaseManager.product != nil else {
-            alert = .init(title: "Unavailable", message: "The product is not available for purchase right now.")
+        guard let userId = Auth.auth().currentUser?.uid else {
+            alert = .init(title: "Error", message: "You must be signed in to purchase.")
+            return
+        }
+        
+        guard let trainerId = selectedTrainer?.id else {
+            alert = .init(title: "Error", message: "Please select a trainer.")
             return
         }
 
@@ -276,27 +292,41 @@ struct PurchaseLessonsView: View {
         defer { isPurchasing = false }
 
         do {
-            let transaction = try await purchaseManager.purchaseLoadedProduct()
-
-            let now = Date()
-            let expiration = Calendar.current.date(byAdding: .month, value: expirationMonths, to: now) ?? now
-
-            try await packagesService.createLessonPackage(
+            // Create payment intent
+            let clientSecret = try await stripeService.createPaymentIntent(
                 packageType: selected.packageType,
-                totalLessons: selected.totalLessons,
-                purchaseDate: now,
-                expirationDate: expiration,
-                transactionId: String(transaction.id)
+                amount: selected.amountInCents,
+                trainerId: trainerId
             )
-
-            await packagesService.loadMyPackages()
-            alert = .init(title: "Purchased", message: "Your lessons have been added to your account.")
+            
+            // Configure payment sheet
+            var configuration = PaymentSheet.Configuration()
+            configuration.merchantDisplayName = "Polyface Volleyball Academy"
+            configuration.allowsDelayedPaymentMethods = false
+            
+            let paymentSheet = PaymentSheet(
+                paymentIntentClientSecret: clientSecret,
+                configuration: configuration
+            )
+            
+            self.paymentSheet = paymentSheet
         } catch {
-            if let err = error as? PurchaseManager.PurchaseError, err == .userCancelled {
-                alert = .init(title: "Purchase Cancelled", message: "No charges were made.")
-            } else {
-                alert = .init(title: "Purchase Failed", message: error.localizedDescription)
+            alert = .init(title: "Payment Failed", message: error.localizedDescription)
+        }
+    }
+    
+    private func handlePaymentCompletion(_ result: PaymentSheetResult) {
+        switch result {
+        case .completed:
+            Task {
+                // Payment succeeded - package will be created by Firebase function
+                await packagesService.loadMyPackages()
+                alert = .init(title: "Success!", message: "Your lessons have been added to your account.")
             }
+        case .canceled:
+            alert = .init(title: "Cancelled", message: "Payment was cancelled.")
+        case .failed(let error):
+            alert = .init(title: "Payment Failed", message: error.localizedDescription)
         }
     }
 
@@ -309,7 +339,7 @@ struct PurchaseLessonsView: View {
     }
 }
 
-// MARK: - Trainer Avatar (copied from BookView for consistency)
+// MARK: - Trainer Avatar
 
 private func trainerImageURL(from trainer: Trainer?) -> URL? {
     guard let trainer else { return nil }

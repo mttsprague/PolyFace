@@ -377,6 +377,9 @@ private struct SignedInProfileScreen: View {
                 
                 // 3-Athlete Passes
                 passTypeCard(title: "3-Athlete Passes", count: threeAthletePassesRemaining, icon: "person.3.fill")
+                
+                // Class Passes
+                passTypeCard(title: "Class Passes", count: registeredClassesCount, icon: "sportscourt.fill")
 
                 // Bottom Buy button
                 NavigationLink {
@@ -622,6 +625,12 @@ private struct SignedInProfileScreen: View {
             guard pkg.packageType == "three_athlete" else { return }
             sum += max(0, pkg.lessonsRemaining)
         }
+    }
+    
+    private var registeredClassesCount: Int {
+        let now = Date()
+        // Count upcoming classes the user is registered for
+        return classesService.upcomingClasses.filter { $0.startTime >= now }.count
     }
 
     private struct LessonCredit: Identifiable, Hashable {

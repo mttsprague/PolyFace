@@ -10,6 +10,7 @@ import SwiftUI
 struct MyUpcomingLessonsView: View {
     @ObservedObject var bookingsService: BookingsService
     @ObservedObject var trainersService: TrainersService
+    @StateObject private var classesService = ClassesService()
 
     // Shared venue/location to display
     let venueName: String
@@ -21,22 +22,64 @@ struct MyUpcomingLessonsView: View {
             .filter { ($0.startTime ?? now) >= now }
             .sorted { ($0.startTime ?? .distantFuture) < ($1.startTime ?? .distantFuture) }
     }
+    
+    private var upcomingClasses: [GroupClass] {
+        let now = Date()
+        return classesService.upcomingClasses
+            .filter { $0.startTime >= now }
+            .sorted { $0.startTime < $1.startTime }
+    }
+    
+    private enum ScheduleItem: Identifiable {
+        case lesson(Booking)
+        case classItem(GroupClass)
+        
+        var id: String {
+            switch self {
+            case .lesson(let booking): return "lesson-\(booking.id ?? "")"
+            case .classItem(let classItem): return "class-\(classItem.id ?? "")"
+            }
+        }
+        
+        var date: Date {
+            switch self {
+            case .lesson(let booking): return booking.startTime ?? .distantFuture
+            case .classItem(let classItem): return classItem.startTime
+            }
+        }
+    }
+    
+    private var allUpcoming: [ScheduleItem] {
+        var items: [ScheduleItem] = []
+        items.append(contentsOf: upcoming.map { .lesson($0) })
+        items.append(contentsOf: upcomingClasses.map { .classItem($0) })
+        return items.sorted { $0.date < $1.date }
+    }
 
     var body: some View {
         List {
-            if bookingsService.isLoading && bookingsService.myBookings.isEmpty {
+            if (bookingsService.isLoading || classesService.isLoading) && allUpcoming.isEmpty {
                 ProgressView()
-            } else if upcoming.isEmpty {
-                Text("No upcoming lessons.")
+            } else if allUpcoming.isEmpty {
+                Text("No upcoming lessons or classes.")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(upcoming) { booking in
-                    LessonRow(booking: booking,
-                              trainerName: trainerName(for: booking.trainerUID),
-                              venueName: venueName,
-                              venueCityStateZip: venueCityStateZip)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                ForEach(allUpcoming) { item in
+                    switch item {
+                    case .lesson(let booking):
+                        LessonRow(booking: booking,
+                                  trainerName: trainerName(for: booking.trainerUID),
+                                  venueName: venueName,
+                                  venueCityStateZip: venueCityStateZip)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                    case .classItem(let classItem):
+                        ClassRow(classItem: classItem,
+                                 trainerName: trainerName(for: classItem.trainerId),
+                                 venueName: venueName)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                    }
                 }
             }
         }
@@ -50,9 +93,13 @@ struct MyUpcomingLessonsView: View {
             if bookingsService.myBookings.isEmpty {
                 await bookingsService.loadMyBookings()
             }
+            if classesService.upcomingClasses.isEmpty {
+                await classesService.loadUpcomingClasses()
+            }
         }
         .refreshable {
             await bookingsService.loadMyBookings()
+            await classesService.loadUpcomingClasses()
         }
     }
 
@@ -107,6 +154,51 @@ private struct LessonRow: View {
                     .foregroundStyle(.secondary)
             }
 
+            Spacer()
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.platformBackground)
+                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+        )
+    }
+}
+private struct ClassRow: View {
+    let classItem: GroupClass
+    let trainerName: String
+    let venueName: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Brand.secondary.opacity(0.12))
+                Image(systemName: "sportscourt.fill")
+                    .foregroundStyle(Brand.secondary)
+            }
+            .frame(width: 36, height: 36)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(classItem.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+
+                Text("\(classItem.startTime.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())) • \(classItem.startTime.formatted(date: .omitted, time: .shortened))–\(classItem.endTime.formatted(date: .omitted, time: .shortened))")
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "person.fill").foregroundStyle(.secondary)
+                    Text(trainerName)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
+                    Text(classItem.location)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Spacer()
         }
         .padding()

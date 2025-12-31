@@ -76,7 +76,7 @@ service cloud.firestore {
         return [
           'emailAddress', 'firstName', 'lastName', 'athleteFirstName',
           'athleteLastName', 'phoneNumber', 'photoURL', 'createdAt',
-          'updatedAt', 'active', 'isAdmin'
+          'updatedAt', 'active', 'isAdmin', 'stripeCustomerId'
         ];
       }
 
@@ -120,6 +120,7 @@ service cloud.firestore {
                && isStringIfPresent('athleteLastName')
                && isStringIfPresent('phoneNumber')
                && isStringIfPresent('photoURL')
+               && isStringIfPresent('stripeCustomerId')
                && isBoolIfPresent('active')
                && requireCreatedAtOnCreate()
                && requireUpdatedAtOnWrite()
@@ -141,6 +142,7 @@ service cloud.firestore {
                && isStringIfPresent('athleteLastName')
                && isStringIfPresent('phoneNumber')
                && isStringIfPresent('photoURL')
+               && isStringIfPresent('stripeCustomerId')
                && isBoolIfPresent('active')
                && isBoolIfPresent('isAdmin')
                && requireUpdatedAtOnWrite()
@@ -171,7 +173,7 @@ service cloud.firestore {
           let allowed = ['packageType', 'totalLessons', 'lessonsUsed', 'purchaseDate', 'expirationDate', 'transactionId'];
           let hasOnlyAllowed = request.resource.data.keys().hasOnly(allowed);
 
-          let typeOk = request.resource.data.packageType in ['single', 'five_pack', 'ten_pack'];
+          let typeOk = request.resource.data.packageType in ['single', 'five_pack', 'ten_pack', 'two_athlete', 'three_athlete'];
           let totalOk = request.resource.data.totalLessons in [1, 5, 10];
 
           // lessonsUsed must start at 0 on create

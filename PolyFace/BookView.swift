@@ -271,19 +271,28 @@ struct BookView: View {
             }
 
             Button {
-                Task { await performBooking() }
-            } label: {
+                if !packagesService.hasAvailableLessons {
+                    bookingAlert = .init(
+                        title: "No Available Passes",
+                        message: "Please purchase lesson passes to continue booking. Visit the Profile tab to buy lessons."
+                    )
+                } else {
+                    Task { await performBooking() }
+                }
+            } label {
                 HStack(spacing: Spacing.sm) {
                     if bookingInFlight {
                         ProgressView()
                             .tint(.white)
+                    } else if !packagesService.hasAvailableLessons {
+                        Image(systemName: "cart.badge.plus")
                     }
-                    Text(bookingInFlight ? "Booking..." : "Confirm Booking")
+                    Text(bookButtonText)
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(!isBookEnabled || bookingInFlight)
-            .opacity(isBookEnabled ? 1.0 : 0.5)
+            .disabled(bookingInFlight || selectedTrainer == nil || selectedSlot == nil)
+            .opacity((selectedTrainer != nil && selectedSlot != nil) ? 1.0 : 0.5)
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.md)
         }
@@ -339,9 +348,18 @@ struct BookView: View {
     private var isBookEnabled: Bool {
         guard mode == .lessons,
               selectedTrainer?.id != nil,
-              selectedSlot?.id != nil,
-              packagesService.hasAvailableLessons else { return false }
-        return true
+              selectedSlot?.id != nil else { return false }
+        return packagesService.hasAvailableLessons
+    }
+    
+    private var bookButtonText: String {
+        if mode == .classes {
+            return "Confirm Booking"
+        }
+        if !packagesService.hasAvailableLessons {
+            return "Purchase Passes to Continue"
+        }
+        return bookingInFlight ? "Booking..." : "Confirm Booking"
     }
 
     private func loadDayIfPossible() async {
@@ -362,14 +380,24 @@ struct BookView: View {
         do {
             // BookingManager ignores the lessonPackageId argument and chooses automatically.
             _ = try await bookingManager.bookLesson(trainerId: trainerId, slotId: slotId, lessonPackageId: "")
-            bookingAlert = .init(title: "Booked!", message: "Your lesson has been booked successfully.")
+            
+            // Create success message with trainer name
+            let trainerName = selectedTrainer?.name ?? "your trainer"
+            bookingAlert = .init(
+                title: "Booking Confirmed! 🎉",
+                message: "Your lesson with \(trainerName) has been successfully booked. See you soon!"
+            )
+            
             // Refresh data after server writes complete
             await packagesService.loadMyPackages()
             await loadDayIfPossible()
             await loadMonthIfPossible()
             selectedSlot = nil
         } catch {
-            bookingAlert = .init(title: "Booking Failed", message: error.localizedDescription)
+            bookingAlert = .init(
+                title: "Booking Failed",
+                message: "We couldn't complete your booking. \(error.localizedDescription)"
+            )
         }
     }
 
@@ -541,6 +569,7 @@ private struct ClassRegistrationSheet: View {
     
     @State private var isRegistering = false
     @State private var isAlreadyRegistered = false
+    @State private var registrationSuccessful = false
     @State private var errorMessage: String?
     @State private var paymentSheet: PaymentSheet?
     @StateObject private var stripeService = StripeService()
@@ -626,6 +655,23 @@ private struct ClassRegistrationSheet: View {
                                     .foregroundStyle(AppTheme.success)
                             }
                         }
+                    } else if registrationSuccessful {
+                        CardView {
+                            VStack(spacing: Spacing.sm) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(AppTheme.success)
+                                Text("Registration Successful!")
+                                    .font(.headingMedium)
+                                    .foregroundStyle(AppTheme.success)
+                                Text("You're all set for \(classItem.title). We'll see you there!")
+                                    .font(.bodyMedium)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, Spacing.md)
+                        }
                     } else if !classItem.isFull {
                         Button {
                             Task { await processPaymentAndRegister() }
@@ -708,12 +754,18 @@ private struct ClassRegistrationSheet: View {
             switch result {
             case .completed:
                 // Payment successful, now register for class
+                errorMessage = nil
                 await registerForClass()
+                
+                // If registration succeeded, show success alert
+                if errorMessage == nil {
+                    // Success state - will dismiss automatically after brief delay
+                }
             case .canceled:
-                errorMessage = "Payment canceled"
+                errorMessage = "Payment was cancelled. You have not been registered for this class."
                 isRegistering = false
             case .failed(let error):
-                errorMessage = "Payment failed: \(error.localizedDescription)"
+                errorMessage = "Payment failed: \(error.localizedDescription). Please try again."
                 isRegistering = false
             }
         }
@@ -732,10 +784,18 @@ private struct ClassRegistrationSheet: View {
                 firstName: firstName,
                 lastName: lastName
             )
+            
+            // Show success message before dismissing
+            errorMessage = nil
+            registrationSuccessful = true
+            
+            // Wait a moment for user to see success state
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            
             onRegistered()
             dismiss()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Registration failed: \(error.localizedDescription)"
         }
         
         isRegistering = false

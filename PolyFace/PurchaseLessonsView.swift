@@ -335,12 +335,28 @@ struct PurchaseLessonsView: View {
             Task {
                 // Payment succeeded - package will be created by Firebase function
                 await packagesService.loadMyPackages()
-                alert = .init(title: "Success!", message: "Your lessons have been added to your account.")
+                
+                // Create user-friendly success message based on package type
+                let successMessage: String
+                switch selected {
+                case .single:
+                    successMessage = "Your private lesson has been added to your account. You can now book a session!"
+                case .twoAthlete:
+                    successMessage = "Your 2-athlete lesson has been added to your account. Ready to train with a partner!"
+                case .threeAthlete:
+                    successMessage = "Your 3-athlete lesson has been added to your account. Ready to train with your group!"
+                case .fivePack:
+                    successMessage = "Your 5-lesson package has been added to your account. Time to start training!"
+                case .tenPack:
+                    successMessage = "Your 10-lesson package has been added to your account. Let's get to work!"
+                }
+                
+                alert = .init(title: "Purchase Successful! 🎉", message: successMessage)
             }
         case .canceled:
-            alert = .init(title: "Cancelled", message: "Payment was cancelled.")
+            alert = .init(title: "Payment Cancelled", message: "Your payment was cancelled. No charges were made.")
         case .failed(let error):
-            alert = .init(title: "Payment Failed", message: error.localizedDescription)
+            alert = .init(title: "Payment Failed", message: "We couldn't process your payment. \(error.localizedDescription)")
         }
     }
 

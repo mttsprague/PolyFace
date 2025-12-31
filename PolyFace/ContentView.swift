@@ -15,12 +15,16 @@ struct AppRootView: View {
     @StateObject private var trainersService = TrainersService()
     @StateObject private var packagesService = PackagesService()
     @StateObject private var bookingsService = BookingsService()
+    @StateObject private var classesService = ClassesService()
+    @StateObject private var adminService = AdminService()
 
     var body: some View {
         Group {
             if auth.isReady {
                 TabView {
-                    HomeView(usersService: usersService, scheduleService: scheduleService)
+                    HomeView(usersService: usersService, 
+                            scheduleService: scheduleService,
+                            classesService: classesService)
                         .tabItem {
                             Label("Home", systemImage: "house.fill")
                         }
@@ -41,12 +45,22 @@ struct AppRootView: View {
                             Label("Profile", systemImage: "person.crop.circle")
                         }
 
-                    MorePlaceholderView()
-                        .tabItem {
-                            Label("More", systemImage: "ellipsis.circle")
-                        }
+                    if adminService.isAdmin {
+                        AdminPanelView()
+                            .tabItem {
+                                Label("Admin", systemImage: "star.fill")
+                            }
+                    } else {
+                        MorePlaceholderView()
+                            .tabItem {
+                                Label("More", systemImage: "ellipsis.circle")
+                            }
+                    }
                 }
                 .tint(AppTheme.primary)
+                .task {
+                    await adminService.checkAdminStatus()
+                }
             } else {
                 VStack(spacing: Spacing.lg) {
                     ProgressView()

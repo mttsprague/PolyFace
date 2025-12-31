@@ -12,6 +12,7 @@ import FirebaseAuth
 struct HomeView: View {
     @ObservedObject var usersService: UsersService
     @ObservedObject var scheduleService: ScheduleService
+    @ObservedObject var classesService: ClassesService
     @Environment(\.openURL) private var openURL
 
     private let venueName = "Midtown"
@@ -20,27 +21,6 @@ struct HomeView: View {
 
     private var isAuthenticated: Bool {
         Auth.auth().currentUser != nil
-    }
-
-    // Static class previews for the Home screen (not tied to user bookings)
-    private var comingUpClasses: [ClassPreview] {
-        [
-            ClassPreview(
-                title: "Beginner Skills Class",
-                start: date(year: 2025, month: 9, day: 23, hour: 17, minute: 0),
-                end:   date(year: 2025, month: 9, day: 23, hour: 18, minute: 30)
-            ),
-            ClassPreview(
-                title: "Serving & Passing Class",
-                start: date(year: 2025, month: 9, day: 25, hour: 18, minute: 0),
-                end:   date(year: 2025, month: 9, day: 25, hour: 19, minute: 30)
-            ),
-            ClassPreview(
-                title: "Hitting & Blocking Class",
-                start: date(year: 2025, month: 9, day: 27, hour: 10, minute: 0),
-                end:   date(year: 2025, month: 9, day: 27, hour: 11, minute: 30)
-            )
-        ]
     }
 
     var body: some View {
@@ -110,9 +90,27 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: Spacing.md) {
                         SectionHeaderView(title: "Upcoming Classes")
                         
-                        VStack(spacing: Spacing.sm) {
-                            ForEach(comingUpClasses) { item in
-                                ClassPreviewRow(item: item)
+                        if classesService.upcomingClasses.isEmpty {
+                            CardView(padding: Spacing.lg) {
+                                VStack(spacing: Spacing.sm) {
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.system(size: 40))
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                    Text("No upcoming classes")
+                                        .font(.bodyMedium)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                    Text("Check back soon for new class schedules")
+                                        .font(.labelSmall)
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                        .multilineTextAlignment(.center)
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                        } else {
+                            VStack(spacing: Spacing.sm) {
+                                ForEach(classesService.upcomingClasses) { groupClass in
+                                    ClassPreviewRow(groupClass: groupClass)
+                                }
                             }
                         }
                     }
@@ -140,6 +138,8 @@ struct HomeView: View {
             if isAuthenticated {
                 await usersService.loadCurrentUserIfAvailable()
             }
+            // Load upcoming classes
+            await classesService.loadUpcomingClasses()
         }
     }
 
@@ -161,30 +161,12 @@ struct HomeView: View {
             }
         }
     }
-
-    // Build a concrete Date from components in the local calendar/timezone.
-    private func date(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> Date {
-        var comps = DateComponents()
-        comps.year = year
-        comps.month = month
-        comps.day = day
-        comps.hour = hour
-        comps.minute = minute
-        return Calendar.current.date(from: comps) ?? Date()
-    }
 }
 
-// MARK: - Class Preview Models/Views
-
-private struct ClassPreview: Identifiable, Hashable {
-    let id = UUID()
-    let title: String
-    let start: Date
-    let end: Date
-}
+// MARK: - Class Preview Row
 
 private struct ClassPreviewRow: View {
-    let item: ClassPreview
+    let groupClass: GroupClass
 
     var body: some View {
         CardView(padding: Spacing.md) {
@@ -207,14 +189,14 @@ private struct ClassPreviewRow: View {
                 }
 
                 VStack(alignment: .leading, spacing: Spacing.xxs) {
-                    Text(item.title)
+                    Text(groupClass.title)
                         .font(.headingSmall)
                         .foregroundStyle(AppTheme.textPrimary)
 
                     HStack(spacing: Spacing.xxs) {
                         Image(systemName: "calendar")
                             .font(.labelSmall)
-                        Text(item.start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                        Text(groupClass.startTime.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
                             .font(.labelMedium)
                     }
                     .foregroundStyle(AppTheme.textSecondary)
@@ -222,10 +204,21 @@ private struct ClassPreviewRow: View {
                     HStack(spacing: Spacing.xxs) {
                         Image(systemName: "clock")
                             .font(.labelSmall)
-                        Text("\(item.start.formatted(date: .omitted, time: .shortened)) - \(item.end.formatted(date: .omitted, time: .shortened))")
+                        Text("\(groupClass.startTime.formatted(date: .omitted, time: .shortened)) - \(groupClass.endTime.formatted(date: .omitted, time: .shortened))")
                             .font(.labelMedium)
                     }
                     .foregroundStyle(AppTheme.textSecondary)
+                    
+                    // Capacity badge
+                    if groupClass.spotsRemaining <= 3 {
+                        HStack(spacing: Spacing.xxs) {
+                            Image(systemName: "person.2.fill")
+                                .font(.labelSmall)
+                            Text("\(groupClass.spotsRemaining) spots left")
+                                .font(.labelMedium)
+                        }
+                        .foregroundStyle(AppTheme.secondary)
+                    }
                 }
                 
                 Spacer()

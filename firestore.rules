@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isSignedIn() 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Helper function to check if user is accessing their own document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own profile, admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Users can create and update their own profile
+      // Prevent users from setting isAdmin on themselves
+      allow create: if isSignedIn() 
+        && request.auth.uid == userId
+        && !request.resource.data.keys().hasAny(['isAdmin']);
+      
+      allow update: if isOwner(userId)
+        && (!request.resource.data.keys().hasAny(['isAdmin']) 
+            || resource.data.isAdmin == request.resource.data.isAdmin);
+    }
+    
+    // Trainers collection - read by all, write by admins only
+    match /trainers/{trainerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Schedules collection
+    match /schedules/{scheduleId} {
+      allow read: if true;
+      // Only trainers can write to their own schedule, or admins
+      allow write: if isAdmin() 
+        || (isSignedIn() && request.auth.uid == resource.data.trainerId);
+    }
+    
+    // Lesson packages - read by all, write by admins
+    match /lessonPackages/{packageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Bookings collection
+    match /bookings/{bookingId} {
+      // Users can read their own bookings, trainers can read bookings assigned to them
+      allow read: if isSignedIn() 
+        && (request.auth.uid == resource.data.userId 
+            || request.auth.uid == resource.data.trainerId
+            || isAdmin());
+      
+      // Users can create bookings for themselves
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId;
+      
+      // Users and trainers can update bookings they're involved in
+      allow update: if isSignedIn() 
+        && (request.auth.uid == resource.data.userId 
+            || request.auth.uid == resource.data.trainerId
+            || isAdmin());
+      
+      // Only admins can delete bookings
+      allow delete: if isAdmin();
+    }
+    
+    // Classes collection - NEW
+    match /classes/{classId} {
+      // Anyone can read classes (need to see them to register)
+      allow read: if true;
+      
+      // Only admins can create, update, or delete classes
+      allow create, update, delete: if isAdmin();
+      
+      // Participants subcollection
+      match /participants/{participantId} {
+        // Anyone can read participants list
+        allow read: if true;
+        
+        // Users can register themselves (create their own participant doc)
+        allow create: if isSignedIn() 
+          && request.auth.uid == participantId
+          && request.resource.data.userId == request.auth.uid;
+        
+        // Users can unregister themselves
+        allow delete: if isOwner(participantId) || isAdmin();
+        
+        // No updates allowed (delete and recreate instead)
+        allow update: if false;
+      }
+    }
+    
+    // Payments/transactions - restrictive access
+    match /payments/{paymentId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isSignedIn() 
+        && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

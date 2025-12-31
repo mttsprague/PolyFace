@@ -520,7 +520,11 @@ private struct ClassCard: View {
         }
         .buttonStyle(.plain)
         .task {
-            isRegistered = await classesService.isRegistered(for: classItem.id)
+            if let id = classItem.id {
+                isRegistered = await classesService.isRegistered(for: id)
+            } else {
+                isRegistered = false
+            }
         }
     }
 }

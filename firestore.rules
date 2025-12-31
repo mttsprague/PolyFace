@@ -99,7 +99,7 @@ service cloud.firestore {
       function emailAddressMatchesTokenIfPresent() {
         return !('emailAddress' in request.resource.data)
                || !('email' in request.auth.token)
-               || (request.resource.data.emailAddress.toLowerCase() == request.auth.token.email.toLowerCase());
+               || (request.resource.data.emailAddress == request.auth.token.email);
       }
 
       function requireCreatedAtOnCreate() {
@@ -228,35 +228,7 @@ service cloud.firestore {
       allow read: if true;
 
       // Only the owner (auth uid == trainerId) or an admin can write their own profile
-      // Validates avatar/photo URL fields if they are present.
       allow create, update, delete: if isSignedIn() && (request.auth.uid == trainerId || isAdmin());
-
-      // Validate trainer profile writes (only checks certain fields when present).
-      function isValidTrainerProfileWrite() {
-        // Allow flexible schema; only validate known URL fields if present.
-        // Accept either avatarUrl, photoURL, or imageUrl as strings.
-        let hasAvatarUrl = "avatarUrl" in request.resource.data;
-        let hasPhotoURL  = "photoURL" in request.resource.data;
-        let hasImageUrl  = "imageUrl" in request.resource.data;
-
-        let avatarOk = !hasAvatarUrl || (request.resource.data.avatarUrl is string
-                        && (request.resource.data.avatarUrl.size() == 0
-                            || request.resource.data.avatarUrl.matches('^https?://')));
-        let photoOk  = !hasPhotoURL  || (request.resource.data.photoURL is string
-                        && (request.resource.data.photoURL.size() == 0
-                            || request.resource.data.photoURL.matches('^https?://')));
-        let imageOk  = !hasImageUrl  || (request.resource.data.imageUrl is string
-                        && (request.resource.data.imageUrl.size() == 0
-                            || request.resource.data.imageUrl.matches('^https?://')));
-
-        // Optionally, enforce basic types for common fields if present (non-breaking)
-        let nameOk   = !("name" in request.resource.data)  || (request.resource.data.name is string);
-        let emailOk  = !("email" in request.resource.data) || (request.resource.data.email is string);
-        let priceOk  = !("price" in request.resource.data) || (request.resource.data.price is number);
-        let activeOk = !("active" in request.resource.data) || (request.resource.data.active is bool);
-
-        return avatarOk && photoOk && imageOk && nameOk && emailOk && priceOk && activeOk;
-      }
 
       // Schedules subcollection (trainer availability slots)
       // trainers/{trainerId}/schedules/{slotId}

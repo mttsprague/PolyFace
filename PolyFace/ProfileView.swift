@@ -378,8 +378,8 @@ private struct SignedInProfileScreen: View {
                 // 3-Athlete Passes
                 passTypeCard(title: "3-Athlete Passes", count: threeAthletePassesRemaining, icon: "person.3.fill")
                 
-                // Class Passes
-                passTypeCard(title: "Class Passes", count: registeredClassesCount, icon: "sportscourt.fill")
+                // Registered Classes (not a pass system, just shows upcoming registrations)
+                passTypeCard(title: "Registered Classes", count: registeredClassesCount, icon: "sportscourt.fill")
 
                 // Bottom Buy button
                 NavigationLink {
@@ -404,7 +404,10 @@ private struct SignedInProfileScreen: View {
     }
     
     private func passTypeCard(title: String, count: Int, icon: String) -> some View {
-        card {
+        let isClassCard = title == "Registered Classes"
+        let remainingText = isClassCard ? "upcoming" : "remaining"
+        
+        return card {
             HStack(spacing: 16) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -419,7 +422,7 @@ private struct SignedInProfileScreen: View {
                     Text(title)
                         .font(.headline)
                         .foregroundStyle(.primary)
-                    Text("\(count) remaining")
+                    Text("\(count) \(remainingText)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

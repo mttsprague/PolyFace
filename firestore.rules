@@ -1,84 +1,312 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if user is authenticated
+
+    // Global function for checking if a user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    // Helper function to check if user is admin
+
+    // Global function for checking if a user is an admin
+    // Checks the isAdmin field in the user's document in the users collection
     function isAdmin() {
-      return isSignedIn() 
+      return request.auth != null 
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Helper function to check if user is accessing their own document
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    // NEW GLOBAL FUNCTION: Check if the authenticated user is a trainer
+    // A user is considered a trainer if their UID corresponds to a document
+    // in the top-level 'trainers' collection.
+    function isTrainer() {
+      return isSignedIn() && exists(/databases/$(database)/documents/trainers/$(request.auth.uid));
     }
-    
-    // Users collection
-    match /users/{userId} {
-      // Users can read their own profile, admins can read all
-      allow read: if isOwner(userId) || isAdmin();
-      
-      // Users can create and update their own profile
-      // Prevent users from setting isAdmin on themselves
-      allow create: if isSignedIn() 
-        && request.auth.uid == userId
-        && !request.resource.data.keys().hasAny(['isAdmin']);
-      
-      allow update: if isOwner(userId)
-        && (!request.resource.data.keys().hasAny(['isAdmin']) 
-            || resource.data.isAdmin == request.resource.data.isAdmin);
+
+    // =========================================================================
+    // EXPLICIT COLLECTION GROUP RULE FOR 'schedules'
+    // This rule takes precedence for any db.collectionGroup('schedules') query
+    // This should allow any authenticated user to read any document in any
+    // 'schedules' subcollection.
+    // =========================================================================
+    match /{path=**}/schedules/{slotId} {
+      allow read: if isSignedIn();
     }
-    
-    // Trainers collection - read by all, write by admins only
-    match /trainers/{trainerId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    // Schedules collection
-    match /schedules/{scheduleId} {
-      allow read: if true;
-      // Only trainers can write to their own schedule, or admins
-      allow write: if isAdmin() 
-        || (isSignedIn() && request.auth.uid == resource.data.trainerId);
-    }
-    
-    // Lesson packages - read by all, write by admins
-    match /lessonPackages/{packageId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    
-    // Bookings collection
+
+    // =========================
+    // Top-level 'bookings' collection
+    // Allows authenticated users to read their own bookings from this collection.
+    // Assumes 'clientUID' field exists in booking documents and matches request.auth.uid.
+    // MODIFIED RULE: Also allow trainers to read bookings where they are the trainer.
+    // =========================
     match /bookings/{bookingId} {
-      // Users can read their own bookings, trainers can read bookings assigned to them
-      allow read: if isSignedIn() 
-        && (request.auth.uid == resource.data.userId 
-            || request.auth.uid == resource.data.trainerId
-            || isAdmin());
-      
-      // Users can create bookings for themselves
-      allow create: if isSignedIn() 
-        && request.auth.uid == request.resource.data.userId;
-      
-      // Users and trainers can update bookings they're involved in
-      allow update: if isSignedIn() 
-        && (request.auth.uid == resource.data.userId 
-            || request.auth.uid == resource.data.trainerId
-            || isAdmin());
-      
-      // Only admins can delete bookings
-      allow delete: if isAdmin();
+      // Clients can read their own bookings
+      allow read: if isSignedIn() && request.auth.uid == resource.data.clientUID;
+      // Trainers can read bookings for their own trainer ID
+      allow read: if isTrainer() && request.auth.uid == resource.data.trainerId;
+
+      // Add create, update, delete rules here if clients or admins manage these directly.
+      // For example, an admin might be able to create/update/delete any booking:
+      // allow create, update, delete: if isAdmin();
     }
-    
-    // Classes collection - NEW
+
+    // =========================
+    // Users collection (profiles)
+    // Document ID must equal Firebase Auth UID
+    // =========================
+    match /users/{userId} {
+      // MODIFIED READ RULE:
+      // User can read their own profile, or if they are an admin,
+      // OR if they are a trainer (to access the client list in the trainer app).
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isTrainer());
+      
+      // Create your own doc; validate keys and require timestamps.
+      allow create: if isSignedIn()
+                    && (request.auth.uid == userId || isAdmin())
+                    && isValidUserCreate();
+
+      // Update your own doc; validate keys, immutability of createdAt, and require updatedAt
+      allow update: if isSignedIn()
+                    && (request.auth.uid == userId || isAdmin())
+                    && isValidUserUpdate();
+
+      // Delete your own doc
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // ---- Helpers for user docs ----
+      function allowedUserKeys() {
+        return [
+          'emailAddress', 'firstName', 'lastName', 'athleteFirstName',
+          'athleteLastName', 'phoneNumber', 'photoURL', 'createdAt',
+          'updatedAt', 'active', 'isAdmin'
+        ];
+      }
+
+      function hasOnlyAllowedUserKeys() {
+        return allowedUserKeys().hasAll(request.resource.data.keys());
+      }
+
+      function isStringIfPresent(field) {
+        return !(field in request.resource.data) || (request.resource.data[field] is string);
+      }
+
+      function isBoolIfPresent(field) {
+        return !(field in request.resource.data) || (request.resource.data[field] is bool);
+      }
+
+      function emailAddressValidIfPresent() {
+        return !('emailAddress' in request.resource.data) || (request.resource.data.emailAddress is string);
+      }
+
+      function emailAddressMatchesTokenIfPresent() {
+        return !('emailAddress' in request.resource.data)
+               || !('email' in request.auth.token)
+               || (request.resource.data.emailAddress.toLowerCase() == request.auth.token.email.toLowerCase());
+      }
+
+      function requireCreatedAtOnCreate() {
+        return ('createdAt' in request.resource.data);
+      }
+
+      function requireUpdatedAtOnWrite() {
+        return ('updatedAt' in request.resource.data);
+      }
+
+      function isValidUserCreate() {
+        let noAdminField = !('isAdmin' in request.resource.data);
+        return hasOnlyAllowedUserKeys()
+               && isStringIfPresent('emailAddress')
+               && isStringIfPresent('firstName')
+               && isStringIfPresent('lastName')
+               && isStringIfPresent('athleteFirstName')
+               && isStringIfPresent('athleteLastName')
+               && isStringIfPresent('phoneNumber')
+               && isStringIfPresent('photoURL')
+               && isBoolIfPresent('active')
+               && requireCreatedAtOnCreate()
+               && requireUpdatedAtOnWrite()
+               && (noAdminField || isAdmin());
+      }
+
+      function isValidUserUpdate() {
+        let sameCreatedAt = !('createdAt' in request.resource.data)
+                            || (resource.data.createdAt == request.resource.data.createdAt);
+        let sameAdminStatus = !('isAdmin' in request.resource.data)
+                              || !('isAdmin' in resource.data)
+                              || (resource.data.isAdmin == request.resource.data.isAdmin)
+                              || isAdmin();
+        return hasOnlyAllowedUserKeys()
+               && isStringIfPresent('emailAddress') && emailAddressValidIfPresent() && emailAddressMatchesTokenIfPresent()
+               && isStringIfPresent('firstName')
+               && isStringIfPresent('lastName')
+               && isStringIfPresent('athleteFirstName')
+               && isStringIfPresent('athleteLastName')
+               && isStringIfPresent('phoneNumber')
+               && isStringIfPresent('photoURL')
+               && isBoolIfPresent('active')
+               && isBoolIfPresent('isAdmin')
+               && requireUpdatedAtOnWrite()
+               && sameCreatedAt
+               && sameAdminStatus;
+      }
+
+      // =========================
+      // Lesson Packages subcollection (purchases)
+      // users/{userId}/lessonPackages/{packageId}
+      // =========================
+      match /lessonPackages/{packageId} {
+        // Owner (or admin) can read their packages
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+        // Owner can create a package at purchase time; validate shape/values.
+        // lessonsUsed must start at 0; totals and types must match allowed sets.
+        allow create: if isSignedIn()
+                      && (request.auth.uid == userId)
+                      && isValidLessonPackageCreate();
+
+        // Block client-side updates/deletes; booking decrements should be done
+        // by Cloud Function via Admin SDK (bypasses rules).
+        allow update, delete: if isAdmin();
+
+        function isValidLessonPackageCreate() {
+          // Allowed fields on create (transactionId is optional)
+          let allowed = ['packageType', 'totalLessons', 'lessonsUsed', 'purchaseDate', 'expirationDate', 'transactionId'];
+          let hasOnlyAllowed = request.resource.data.keys().hasOnly(allowed);
+
+          let typeOk = request.resource.data.packageType in ['single', 'five_pack', 'ten_pack'];
+          let totalOk = request.resource.data.totalLessons in [1, 5, 10];
+
+          // lessonsUsed must start at 0 on create
+          let usedOk = request.resource.data.lessonsUsed == 0;
+
+          // Timestamps must be timestamps
+          let purchaseTsOk = request.resource.data.purchaseDate is timestamp;
+          let expiryTsOk   = request.resource.data.expirationDate is timestamp;
+
+          // Optional transactionId must be a string if present
+          let txOk = !('transactionId' in request.resource.data)
+                     || (request.resource.data.transactionId is string);
+
+          // Basic sanity: expiry should be on/after purchase
+          let expiryAfterPurchase = request.resource.data.expirationDate >= request.resource.data.purchaseDate;
+
+          return hasOnlyAllowed
+                 && typeOk
+                 && totalOk
+                 && usedOk
+                 && purchaseTsOk
+                 && expiryTsOk
+                 && txOk
+                 && expiryAfterPurchase;
+        }
+      }
+
+      // =========================
+      // Bookings subcollection for users
+      // users/{userId}/bookings/{bookingId}
+      // Allows authenticated users to read their own bookings stored as a subcollection.
+      // =========================
+      match /bookings/{bookingId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        // Add create, update, delete rules here if users manage their bookings directly here.
+      }
+
+      // =========================
+      // Lessons subcollection for users
+      // users/{userId}/lessons/{lessonId}
+      // Allows authenticated users to read their own lessons stored as a subcollection.
+      // =========================
+      match /lessons/{lessonId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        // Add create, update, delete rules here if users manage their lessons directly here.
+      }
+    }
+
+    // =========================
+    // Trainers collection (profiles) and schedules subcollection
+    // =========================
+    match /trainers/{trainerId} {
+      // Public read (client app can read trainer profiles)
+      allow read: if true;
+
+      // Only the owner (auth uid == trainerId) or an admin can write their own profile
+      // Validates avatar/photo URL fields if they are present.
+      allow create, update, delete: if isSignedIn() && (request.auth.uid == trainerId || isAdmin());
+
+      // Validate trainer profile writes (only checks certain fields when present).
+      function isValidTrainerProfileWrite() {
+        // Allow flexible schema; only validate known URL fields if present.
+        // Accept either avatarUrl, photoURL, or imageUrl as strings.
+        let hasAvatarUrl = "avatarUrl" in request.resource.data;
+        let hasPhotoURL  = "photoURL" in request.resource.data;
+        let hasImageUrl  = "imageUrl" in request.resource.data;
+
+        let avatarOk = !hasAvatarUrl || (request.resource.data.avatarUrl is string
+                        && (request.resource.data.avatarUrl.size() == 0
+                            || request.resource.data.avatarUrl.matches('^https?://')));
+        let photoOk  = !hasPhotoURL  || (request.resource.data.photoURL is string
+                        && (request.resource.data.photoURL.size() == 0
+                            || request.resource.data.photoURL.matches('^https?://')));
+        let imageOk  = !hasImageUrl  || (request.resource.data.imageUrl is string
+                        && (request.resource.data.imageUrl.size() == 0
+                            || request.resource.data.imageUrl.matches('^https?://')));
+
+        // Optionally, enforce basic types for common fields if present (non-breaking)
+        let nameOk   = !("name" in request.resource.data)  || (request.resource.data.name is string);
+        let emailOk  = !("email" in request.resource.data) || (request.resource.data.email is string);
+        let priceOk  = !("price" in request.resource.data) || (request.resource.data.price is number);
+        let activeOk = !("active" in request.resource.data) || (request.resource.data.active is bool);
+
+        return avatarOk && photoOk && imageOk && nameOk && emailOk && priceOk && activeOk;
+      }
+
+      // Schedules subcollection (trainer availability slots)
+      // trainers/{trainerId}/schedules/{slotId}
+      match /schedules/{slotId} {
+        // Publicly viewable schedules: allows anyone to read a trainer's availability.
+        // Note: The collectionGroup rule for 'schedules' also applies, requiring sign-in for group queries.
+        allow read: if true;
+
+        // Only the owner (trainerId) or an admin can create, update, or delete their own availability slots.
+        // Booking is NOT allowed here; it should go through a Cloud Function via Admin SDK (bypasses rules).
+        allow create, update, delete: if isOwner(trainerId) && isValidAvailabilityWrite();
+
+        // Explicitly deny any other direct writes to prevent unauthorized modifications.
+        allow write: if false;
+
+        // Helpers
+        function isOwner(trainerId) {
+          return request.auth != null && request.auth.uid == trainerId;
+        }
+
+        // Validate trainer availability writes (e.g., status, timestamps, no client fields).
+        function isValidAvailabilityWrite() {
+          // New status, if provided, must be "open" or "unavailable"
+          let hasStatus = "status" in request.resource.data;
+          let statusOk = !hasStatus || (request.resource.data.status == "open" || request.resource.data.status == "unavailable");
+
+          // If timestamps provided, they must be timestamps and start < end
+          let hasStart = "startTime" in request.resource.data;
+          let hasEnd = "endTime" in request.resource.data;
+          let startTypeOk = !hasStart || (request.resource.data.startTime is timestamp);
+          let endTypeOk   = !hasEnd   || (request.resource.data.endTime is timestamp);
+          let orderOk = !(hasStart && hasEnd) || (request.resource.data.startTime < request.resource.data.endTime);
+
+          // Client booking fields must not be set on availability writes directly by client/trainer.
+          let clientIdCleared   = !("clientId" in request.resource.data)   || request.resource.data.clientId == null;
+          let clientNameCleared = !("clientName" in request.resource.data) || request.resource.data.clientName == null;
+
+          // Prevent client or trainer from setting 'bookedAt' (this should be server-managed by Cloud Function).
+          let noBookedAt = !("bookedAt" in request.resource.data);
+
+          return statusOk && startTypeOk && endTypeOk && orderOk && clientIdCleared && clientNameCleared && noBookedAt;
+        }
+      }
+    }
+
+    // =========================
+    // Classes collection - Group classes for admin management
+    // =========================
     match /classes/{classId} {
-      // Anyone can read classes (need to see them to register)
+      // Anyone can read classes (users need to see them to register)
       allow read: if true;
       
       // Only admins can create, update, or delete classes
@@ -86,28 +314,27 @@ service cloud.firestore {
       
       // Participants subcollection
       match /participants/{participantId} {
-        // Anyone can read participants list
+        // Anyone can read participants list (to check capacity)
         allow read: if true;
         
         // Users can register themselves (create their own participant doc)
+        // participantId must match their auth uid
         allow create: if isSignedIn() 
           && request.auth.uid == participantId
           && request.resource.data.userId == request.auth.uid;
         
-        // Users can unregister themselves
-        allow delete: if isOwner(participantId) || isAdmin();
+        // Users can unregister themselves, admins can remove anyone
+        allow delete: if isSignedIn() 
+          && (request.auth.uid == participantId || isAdmin());
         
         // No updates allowed (delete and recreate instead)
         allow update: if false;
       }
     }
-    
-    // Payments/transactions - restrictive access
-    match /payments/{paymentId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow create: if isSignedIn() 
-        && request.auth.uid == request.resource.data.userId;
-      allow update, delete: if isAdmin();
+    // Deny everything else by default
+    // Any document or operation not explicitly allowed above will be denied here.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

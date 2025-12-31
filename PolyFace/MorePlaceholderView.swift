@@ -150,9 +150,7 @@ struct MorePlaceholderView: View {
                         SectionHeaderView(title: "Legal")
                         
                         CardView {
-                            Button {
-                                // Privacy policy link TBD
-                            } label: {
+                            Link(destination: URL(string: "https://www.polyfacevolleyball.com/privacypolicy")!) {
                                 HStack(spacing: Spacing.md) {
                                     ZStack {
                                         RoundedRectangle(cornerRadius: CornerRadius.xs, style: .continuous)
@@ -169,19 +167,18 @@ struct MorePlaceholderView: View {
                                             .font(.bodyMedium)
                                             .foregroundStyle(AppTheme.primary)
                                         
-                                        Text("Coming soon")
+                                        Text("View our privacy policy")
                                             .font(.labelMedium)
                                             .foregroundStyle(AppTheme.textSecondary)
                                     }
                                     
                                     Spacer()
                                     
-                                    Image(systemName: "chevron.right")
+                                    Image(systemName: "arrow.up.right")
                                         .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(AppTheme.textTertiary)
                                 }
                             }
-                            .disabled(true)
                         }
                     }
                     

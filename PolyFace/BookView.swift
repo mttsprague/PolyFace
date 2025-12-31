@@ -8,6 +8,7 @@
 
 import SwiftUI
 import StripePaymentSheet
+import FirebaseAuth
 
 struct BookView: View {
     @ObservedObject var trainersService: TrainersService
@@ -574,6 +575,7 @@ private struct ClassRegistrationSheet: View {
     @State private var errorMessage: String?
     @State private var paymentSheet: PaymentSheet?
     @StateObject private var stripeService = StripeService()
+    @StateObject private var customerService = StripeCustomerService()
     
     var body: some View {
         NavigationStack {
@@ -726,6 +728,9 @@ private struct ClassRegistrationSheet: View {
         errorMessage = nil
         
         do {
+            // Ensure user has a Stripe customer (enables saving cards)
+            _ = try await customerService.getOrCreateCustomer()
+            
             // Create payment intent for class registration
             let clientSecret = try await stripeService.createPaymentIntent(
                 packageType: "class_registration",
@@ -733,9 +738,10 @@ private struct ClassRegistrationSheet: View {
                 trainerId: trainerId
             )
             
-            // Configure and present payment sheet
+            // Configure and present payment sheet with save option
             var configuration = PaymentSheet.Configuration()
             configuration.merchantDisplayName = "Polyface Volleyball Academy"
+            configuration.defaultBillingDetails.email = Auth.auth().currentUser?.email
             
             paymentSheet = PaymentSheet(
                 paymentIntentClientSecret: clientSecret,

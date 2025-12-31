@@ -7,6 +7,7 @@ import FirebaseAuth
 struct PurchaseLessonsView: View {
     @ObservedObject var packagesService: PackagesService
     @StateObject private var stripeService = StripeService()
+    @StateObject private var customerService = StripeCustomerService()
 
     // Trainers dropdown
     @StateObject private var trainersService = TrainersService()
@@ -306,6 +307,9 @@ struct PurchaseLessonsView: View {
         defer { isPurchasing = false }
 
         do {
+            // Ensure user has a Stripe customer (enables saving cards)
+            _ = try await customerService.getOrCreateCustomer()
+            
             // Create payment intent
             let clientSecret = try await stripeService.createPaymentIntent(
                 packageType: selected.packageType,
@@ -313,10 +317,13 @@ struct PurchaseLessonsView: View {
                 trainerId: trainerId
             )
             
-            // Configure payment sheet
+            // Configure payment sheet with option to save card
             var configuration = PaymentSheet.Configuration()
             configuration.merchantDisplayName = "Polyface Volleyball Academy"
             configuration.allowsDelayedPaymentMethods = false
+            
+            // Enable saving payment methods
+            configuration.defaultBillingDetails.email = Auth.auth().currentUser?.email
             
             let paymentSheet = PaymentSheet(
                 paymentIntentClientSecret: clientSecret,

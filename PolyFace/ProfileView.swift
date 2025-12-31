@@ -84,6 +84,7 @@ private struct SignedInProfileScreen: View {
     @ObservedObject var scheduleService: ScheduleService
     @StateObject private var trainersService = TrainersService()
     @StateObject private var classesService = ClassesService()
+    @StateObject private var customerService = StripeCustomerService()
 
     @State private var tab: Tab = .schedule
     enum Tab: String { case schedule = "SCHEDULE", passes = "PASSES", wallet = "WALLET" }
@@ -111,12 +112,16 @@ private struct SignedInProfileScreen: View {
             if classesService.upcomingClasses.isEmpty {
                 await classesService.loadUpcomingClasses()
             }
+            if customerService.paymentMethods.isEmpty {
+                await customerService.loadPaymentMethods()
+            }
         }
         .refreshable {
             await usersService.loadCurrentUserIfAvailable()
             await packagesService.loadMyPackages()
             await bookingsService.loadMyBookings()
             await classesService.loadUpcomingClasses()
+            await customerService.loadPaymentMethods()
         }
     }
 
@@ -256,7 +261,7 @@ private struct SignedInProfileScreen: View {
                                     .foregroundStyle(.secondary)
                                 HStack(spacing: 6) {
                                     Image(systemName: "person.fill").foregroundStyle(.secondary)
-                                    Text(trainerName(for: classItem.trainerUID ?? ""))
+                                    Text(trainerName(for: classItem.trainerId))
                                         .foregroundStyle(.secondary)
                                 }
                                 HStack(spacing: 6) {
@@ -335,7 +340,7 @@ private struct SignedInProfileScreen: View {
                                         .foregroundStyle(.secondary)
                                     HStack(spacing: 6) {
                                         Image(systemName: "person.fill").foregroundStyle(.secondary)
-                                        Text(trainerName(for: classItem.trainerUID ?? ""))
+                                        Text(trainerName(for: classItem.trainerId))
                                             .foregroundStyle(.secondary)
                                     }
                                 }
@@ -425,13 +430,57 @@ private struct SignedInProfileScreen: View {
         }
     }
 
-    // MARK: WALLET tab (placeholder)
+    // MARK: WALLET tab
 
     private var walletTab: some View {
         VStack(spacing: 12) {
-            card {
-                Text("Wallet coming soon.")
-                    .foregroundStyle(.secondary)
+            if customerService.isLoading {
+                ProgressView().padding()
+            } else if customerService.paymentMethods.isEmpty {
+                card {
+                    VStack(spacing: 12) {
+                        Image(systemName: "creditcard")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                        Text("No Saved Cards")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text("Your saved payment methods will appear here after you make a purchase with the 'Save for future use' option.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                }
+            } else {
+                ForEach(customerService.paymentMethods) { method in
+                    PaymentMethodCard(
+                        method: method,
+                        onRemove: {
+                            Task {
+                                do {
+                                    try await customerService.removePaymentMethod(method.id)
+                                } catch {
+                                    // Handle error - could show alert
+                                    print("Failed to remove card: \(error)")
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+            
+            if let error = customerService.errorMessage {
+                card {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -720,5 +769,83 @@ private struct RegisterForm: View {
             .padding(.horizontal)
         }
         .padding(.horizontal)
+    }
+}
+
+// MARK: - Payment Method Card
+
+private struct PaymentMethodCard: View {
+    let method: PaymentMethodInfo
+    let onRemove: () -> Void
+    
+    @State private var showingRemoveConfirmation = false
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Card icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(cardColor.opacity(0.15))
+                Image(systemName: cardIcon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(cardColor)
+            }
+            .frame(width: 56, height: 56)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(method.displayBrand) •••• \(method.last4)")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("Expires \(method.expirationDisplay)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Spacer()
+            
+            Button {
+                showingRemoveConfirmation = true
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 18))
+                    .foregroundStyle(.red)
+                    .frame(width: 44, height: 44)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.platformBackground)
+                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+        )
+        .padding(.horizontal, 16)
+        .alert("Remove Card?", isPresented: $showingRemoveConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Remove", role: .destructive) {
+                onRemove()
+            }
+        } message: {
+            Text("Are you sure you want to remove this payment method?")
+        }
+    }
+    
+    private var cardIcon: String {
+        switch method.brand.lowercased() {
+        case "visa": return "creditcard.fill"
+        case "mastercard": return "creditcard.fill"
+        case "amex": return "creditcard.fill"
+        case "discover": return "creditcard.fill"
+        default: return "creditcard"
+        }
+    }
+    
+    private var cardColor: Color {
+        switch method.brand.lowercased() {
+        case "visa": return .blue
+        case "mastercard": return .orange
+        case "amex": return .green
+        case "discover": return .purple
+        default: return Brand.primary
+        }
     }
 }

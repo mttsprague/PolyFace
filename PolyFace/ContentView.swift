@@ -38,6 +38,7 @@ struct AppRootView: View {
                     BookView(trainersService: trainersService,
                              scheduleService: scheduleService,
                              packagesService: packagesService,
+                             usersService: usersService,
                              initialMode: $bookViewMode)
                         .tabItem {
                             Label("Book", systemImage: "calendar.badge.plus")

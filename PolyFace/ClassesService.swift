@@ -64,7 +64,7 @@ final class ClassesService: ObservableObject {
     }
     
     // Register for a class
-    func registerForClass(classId: String) async throws {
+    func registerForClass(classId: String, firstName: String, lastName: String) async throws {
         guard let uid = Auth.auth().currentUser?.uid else {
             throw NSError(domain: "ClassesService", code: -1, 
                          userInfo: [NSLocalizedDescriptionKey: "Not signed in"])
@@ -100,10 +100,12 @@ final class ClassesService: ObservableObject {
             // Increment participants
             transaction.updateData(["currentParticipants": currentParticipants + 1], forDocument: classRef)
             
-            // Add user to participants subcollection
+            // Add user to participants subcollection with their name
             let participantRef = classRef.collection("participants").document(uid)
             transaction.setData([
                 "userId": uid,
+                "firstName": firstName,
+                "lastName": lastName,
                 "registeredAt": Timestamp(date: Date())
             ], forDocument: participantRef)
             

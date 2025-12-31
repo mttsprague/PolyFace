@@ -12,6 +12,7 @@ struct BookView: View {
     @ObservedObject var trainersService: TrainersService
     @ObservedObject var scheduleService: ScheduleService
     @ObservedObject var packagesService: PackagesService
+    @ObservedObject var usersService: UsersService
     @StateObject private var bookingManager = BookingManager()
     @StateObject private var classesService = ClassesService()
     
@@ -77,6 +78,7 @@ struct BookView: View {
                 ClassRegistrationSheet(
                     classItem: classItem,
                     classesService: classesService,
+                    usersService: usersService,
                     onRegistered: {
                         bookingAlert = BookingAlert(title: "Registered!", message: "You're registered for \(classItem.title)")
                         Task { await classesService.loadOpenClasses() }
@@ -511,6 +513,7 @@ private struct ClassRegistrationSheet: View {
     @Environment(\.dismiss) private var dismiss
     let classItem: GroupClass
     @ObservedObject var classesService: ClassesService
+    @ObservedObject var usersService: UsersService
     let onRegistered: () -> Void
     
     @State private var isRegistering = false
@@ -632,11 +635,19 @@ private struct ClassRegistrationSheet: View {
     private func registerForClass() async {
         guard let classId = classItem.id else { return }
         
+        // Get user's name from UsersService
+        let firstName = usersService.currentUser?.firstName ?? "Unknown"
+        let lastName = usersService.currentUser?.lastName ?? "User"
+        
         isRegistering = true
         errorMessage = nil
         
         do {
-            try await classesService.registerForClass(classId: classId)
+            try await classesService.registerForClass(
+                classId: classId,
+                firstName: firstName,
+                lastName: lastName
+            )
             onRegistered()
             dismiss()
         } catch {

@@ -116,7 +116,10 @@ struct HomeView: View {
                                         bookViewMode = 1 // Switch to classes mode
                                         selectedTab = 1 // Switch to Book tab
                                     } label: {
-                                        ClassPreviewRow(groupClass: groupClass)
+                                        ClassPreviewRow(
+                                            groupClass: groupClass,
+                                            classesService: classesService
+                                        )
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -176,6 +179,8 @@ struct HomeView: View {
 
 private struct ClassPreviewRow: View {
     let groupClass: GroupClass
+    @ObservedObject var classesService: ClassesService
+    @State private var isRegistered = false
 
     var body: some View {
         CardView(padding: Spacing.md) {
@@ -198,9 +203,15 @@ private struct ClassPreviewRow: View {
                 }
 
                 VStack(alignment: .leading, spacing: Spacing.xxs) {
-                    Text(groupClass.title)
-                        .font(.headingSmall)
-                        .foregroundStyle(AppTheme.textPrimary)
+                    HStack {
+                        Text(groupClass.title)
+                            .font(.headingSmall)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        
+                        if isRegistered {
+                            BadgeView(text: "Registered", color: AppTheme.success)
+                        }
+                    }
 
                     HStack(spacing: Spacing.xxs) {
                         Image(systemName: "calendar")
@@ -219,7 +230,7 @@ private struct ClassPreviewRow: View {
                     .foregroundStyle(AppTheme.textSecondary)
                     
                     // Capacity badge
-                    if groupClass.spotsRemaining <= 3 {
+                    if !isRegistered && groupClass.spotsRemaining <= 3 {
                         HStack(spacing: Spacing.xxs) {
                             Image(systemName: "person.2.fill")
                                 .font(.labelSmall)
@@ -236,6 +247,9 @@ private struct ClassPreviewRow: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AppTheme.textTertiary)
             }
+        }
+        .task {
+            isRegistered = await classesService.isRegistered(for: groupClass.id)
         }
     }
 }

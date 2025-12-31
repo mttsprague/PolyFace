@@ -316,9 +316,13 @@ struct BookView: View {
             } else {
                 VStack(spacing: Spacing.sm) {
                     ForEach(classesService.classes) { classItem in
-                        ClassCard(classItem: classItem) {
-                            selectedClass = classItem
-                        }
+                        ClassCard(
+                            classItem: classItem,
+                            onTap: {
+                                selectedClass = classItem
+                            },
+                            classesService: classesService
+                        )
                         .padding(.horizontal, Spacing.lg)
                     }
                 }
@@ -449,6 +453,8 @@ private struct TrainerAvatarView: View {
 private struct ClassCard: View {
     let classItem: GroupClass
     let onTap: () -> Void
+    @ObservedObject var classesService: ClassesService
+    @State private var isRegistered = false
     
     var body: some View {
         Button(action: onTap) {
@@ -456,9 +462,15 @@ private struct ClassCard: View {
                 VStack(alignment: .leading, spacing: Spacing.md) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: Spacing.xxs) {
-                            Text(classItem.title)
-                                .font(.headingSmall)
-                                .foregroundStyle(AppTheme.textPrimary)
+                            HStack {
+                                Text(classItem.title)
+                                    .font(.headingSmall)
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                
+                                if isRegistered {
+                                    BadgeView(text: "Registered", color: AppTheme.success)
+                                }
+                            }
                             
                             Text(classItem.description)
                                 .font(.bodySmall)
@@ -468,7 +480,10 @@ private struct ClassCard: View {
                         
                         Spacer()
                         
-                        if classItem.isFull {
+                        if isRegistered {
+                            // Don't show capacity if already registered
+                            EmptyView()
+                        } else if classItem.isFull {
                             BadgeView(text: "Full", color: AppTheme.error)
                         } else {
                             BadgeView(text: "\(classItem.spotsRemaining) spots", color: AppTheme.success)
@@ -504,6 +519,9 @@ private struct ClassCard: View {
             }
         }
         .buttonStyle(.plain)
+        .task {
+            isRegistered = await classesService.isRegistered(for: classItem.id)
+        }
     }
 }
 

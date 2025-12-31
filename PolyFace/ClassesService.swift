@@ -27,7 +27,6 @@ final class ClassesService: ObservableObject {
         do {
             let now = Timestamp(date: Date())
             let snapshot = try await db.collection("classes")
-                .whereField("isOpenForRegistration", isEqualTo: true)
                 .whereField("startTime", isGreaterThan: now)
                 .order(by: "startTime")
                 .getDocuments()
@@ -48,7 +47,6 @@ final class ClassesService: ObservableObject {
         do {
             let now = Timestamp(date: Date())
             let snapshot = try await db.collection("classes")
-                .whereField("isOpenForRegistration", isEqualTo: true)
                 .whereField("startTime", isGreaterThan: now)
                 .order(by: "startTime")
                 .limit(to: 3)

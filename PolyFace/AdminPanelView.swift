@@ -58,7 +58,7 @@ struct AdminPanelView: View {
             await adminService.checkAdminStatus()
             if adminService.isAdmin {
                 await classesService.loadOpenClasses()
-                await trainersService.loadTrainers()
+                await trainersService.loadAll()
             }
         }
     }
@@ -292,7 +292,7 @@ struct CreateClassView: View {
                     Picker("Select Trainer", selection: $selectedTrainer) {
                         Text("Select a trainer").tag(nil as Trainer?)
                         ForEach(trainersService.trainers) { trainer in
-                            Text(trainer.name).tag(trainer as Trainer?)
+                            Text(trainer.name ?? "Unknown").tag(trainer as Trainer?)
                         }
                     }
                 }
@@ -335,6 +335,12 @@ struct CreateClassView: View {
             errorMessage = "Please select a head trainer"
             return
         }
+        // Validate required trainer fields (id and name must be non-optional)
+        guard let trainerId = trainer.id, !trainerId.isEmpty,
+              let trainerName = trainer.name, !trainerName.isEmpty else {
+            errorMessage = "Selected trainer is missing required information."
+            return
+        }
         
         isCreating = true
         errorMessage = nil
@@ -347,8 +353,8 @@ struct CreateClassView: View {
                 endTime: endDate,
                 maxParticipants: maxParticipants,
                 location: location,
-                trainerId: trainer.id,
-                trainerName: trainer.name
+                trainerId: trainerId,
+                trainerName: trainerName
             )
             onCreated()
             dismiss()

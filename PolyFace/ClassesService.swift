@@ -14,6 +14,7 @@ import FirebaseFirestore
 final class ClassesService: ObservableObject {
     @Published private(set) var classes: [GroupClass] = []
     @Published private(set) var upcomingClasses: [GroupClass] = []
+    @Published private(set) var myRegisteredClasses: [GroupClass] = []
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     
@@ -125,6 +126,45 @@ final class ClassesService: ObservableObject {
             return doc.exists
         } catch {
             return false
+        }
+    }
+    
+    // Load only classes the current user is registered for
+    func loadMyRegisteredClasses() async {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            myRegisteredClasses = []
+            return
+        }
+        
+        do {
+            let now = Timestamp(date: Date())
+            
+            // Get all upcoming classes first
+            let classesSnapshot = try await db.collection("classes")
+                .whereField("startTime", isGreaterThan: now)
+                .order(by: "startTime")
+                .getDocuments()
+            
+            var registeredClasses: [GroupClass] = []
+            
+            // For each class, check if user is registered
+            for doc in classesSnapshot.documents {
+                let participantDoc = try await db.collection("classes")
+                    .document(doc.documentID)
+                    .collection("participants")
+                    .document(uid)
+                    .getDocument()
+                
+                if participantDoc.exists,
+                   let groupClass = decodeClass(id: doc.documentID, data: doc.data()) {
+                    registeredClasses.append(groupClass)
+                }
+            }
+            
+            myRegisteredClasses = registeredClasses.sorted { $0.startTime < $1.startTime }
+        } catch {
+            print("Error loading registered classes: \(error)")
+            myRegisteredClasses = []
         }
     }
     

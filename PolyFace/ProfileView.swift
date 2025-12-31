@@ -109,8 +109,8 @@ private struct SignedInProfileScreen: View {
             if trainersService.trainers.isEmpty {
                 await trainersService.loadAll()
             }
-            if classesService.upcomingClasses.isEmpty {
-                await classesService.loadUpcomingClasses()
+            if classesService.myRegisteredClasses.isEmpty {
+                await classesService.loadMyRegisteredClasses()
             }
             if customerService.paymentMethods.isEmpty {
                 await customerService.loadPaymentMethods()
@@ -120,7 +120,7 @@ private struct SignedInProfileScreen: View {
             await usersService.loadCurrentUserIfAvailable()
             await packagesService.loadMyPackages()
             await bookingsService.loadMyBookings()
-            await classesService.loadUpcomingClasses()
+            await classesService.loadMyRegisteredClasses()
             await customerService.loadPaymentMethods()
         }
     }
@@ -584,8 +584,7 @@ private struct SignedInProfileScreen: View {
         events.append(contentsOf: upcomingLessons)
         
         // Add all upcoming classes (user must be registered to see them here)
-        // Note: This will show all classes; filtering by registration would require async
-        let upcomingClasses = classesService.upcomingClasses
+        let upcomingClasses = classesService.myRegisteredClasses
             .filter { $0.startTime >= now }
             .map { UpcomingEvent.classItem($0) }
         events.append(contentsOf: upcomingClasses)
@@ -630,7 +629,7 @@ private struct SignedInProfileScreen: View {
     private var registeredClassesCount: Int {
         let now = Date()
         // Count upcoming classes the user is registered for
-        return classesService.upcomingClasses.filter { $0.startTime >= now }.count
+        return classesService.myRegisteredClasses.filter { $0.startTime >= now }.count
     }
 
     private struct LessonCredit: Identifiable, Hashable {

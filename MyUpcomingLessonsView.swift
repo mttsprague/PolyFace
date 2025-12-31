@@ -25,7 +25,7 @@ struct MyUpcomingLessonsView: View {
     
     private var upcomingClasses: [GroupClass] {
         let now = Date()
-        return classesService.upcomingClasses
+        return classesService.myRegisteredClasses
             .filter { $0.startTime >= now }
             .sorted { $0.startTime < $1.startTime }
     }
@@ -93,13 +93,13 @@ struct MyUpcomingLessonsView: View {
             if bookingsService.myBookings.isEmpty {
                 await bookingsService.loadMyBookings()
             }
-            if classesService.upcomingClasses.isEmpty {
-                await classesService.loadUpcomingClasses()
+            if classesService.myRegisteredClasses.isEmpty {
+                await classesService.loadMyRegisteredClasses()
             }
         }
         .refreshable {
             await bookingsService.loadMyBookings()
-            await classesService.loadUpcomingClasses()
+            await classesService.loadMyRegisteredClasses()
         }
     }
 

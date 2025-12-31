@@ -56,6 +56,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C320424C2E9C9D52003EF857 /* PolyFace */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C320424D2E9C9D52003EF857 /* Exceptions for "PolyFace" folder in "PolyFace" target */,
+			);
 			path = PolyFace;
 			sourceTree = "<group>";
 		};
@@ -70,6 +73,16 @@
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFileSystemSynchronizedException section */
+		C320424D2E9C9D52003EF857 /* Exceptions for "PolyFace" folder in "PolyFace" target */ = {
+			isa = PBXFileSystemSynchronizedException;
+			exceptions = (
+				Info.plist,
+			);
+			target = C32042492E9C9D52003EF857 /* PolyFace */;
+		};
+/* End PBXFileSystemSynchronizedException section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		C32042472E9C9D52003EF857 /* Frameworks */ = {

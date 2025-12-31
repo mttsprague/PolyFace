@@ -140,6 +140,8 @@ final class ClassesService: ObservableObject {
             let currentParticipants = data["currentParticipants"] as? Int,
             let location = data["location"] as? String,
             let isOpenForRegistration = data["isOpenForRegistration"] as? Bool,
+            let trainerId = data["trainerId"] as? String,
+            let trainerName = data["trainerName"] as? String,
             let createdBy = data["createdBy"] as? String,
             let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
         else {
@@ -156,6 +158,8 @@ final class ClassesService: ObservableObject {
             currentParticipants: currentParticipants,
             location: location,
             isOpenForRegistration: isOpenForRegistration,
+            trainerId: trainerId,
+            trainerName: trainerName,
             createdBy: createdBy,
             createdAt: createdAt
         )

@@ -102,7 +102,8 @@ struct EditProfileView: View {
         } message: {
             Text(alertMessage)
         }
-        .onAppear {
+        .task {
+            await usersService.loadCurrentUserIfAvailable()
             loadProfile()
         }
     }

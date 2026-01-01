@@ -39,7 +39,11 @@ final class PackagesService: ObservableObject {
     }
 
     var hasAvailableLessons: Bool {
-        packages.contains { $0.lessonsRemaining > 0 && $0.expirationDate >= Date() }
+        packages.contains { 
+            $0.packageType != "class_pass" && 
+            $0.lessonsRemaining > 0 && 
+            $0.expirationDate >= Date() 
+        }
     }
 
     // Create a new lesson package document under the signed-in user.

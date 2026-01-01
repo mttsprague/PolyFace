@@ -109,6 +109,8 @@ final class BookingManager: ObservableObject {
         let pkgs: [Pkg] = snap.documents.compactMap { doc in
             let data = doc.data()
             guard
+                let packageType = data["packageType"] as? String,
+                packageType != "class_pass", // Exclude class passes - they can only be used for classes
                 let total = data["totalLessons"] as? Int,
                 let used = data["lessonsUsed"] as? Int,
                 let exp = date(from: data["expirationDate"])

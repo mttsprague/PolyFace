@@ -11,10 +11,17 @@ struct MyUpcomingLessonsView: View {
     @ObservedObject var bookingsService: BookingsService
     @ObservedObject var trainersService: TrainersService
     @StateObject private var classesService = ClassesService()
+    @StateObject private var cancellationService = CancellationService()
+    @StateObject private var packagesService = PackagesService()
 
     // Shared venue/location to display
     let venueName: String
     let venueCityStateZip: String
+    
+    @State private var itemToCancel: ScheduleItem?
+    @State private var showCancelAlert = false
+    @State private var isCancelling = false
+    @State private var cancelError: String?
 
     private var upcoming: [Booking] {
         let now = Date()
@@ -73,12 +80,28 @@ struct MyUpcomingLessonsView: View {
                                   venueCityStateZip: venueCityStateZip)
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    itemToCancel = item
+                                    showCancelAlert = true
+                                } label: {
+                                    Label("Cancel", systemImage: "xmark.circle")
+                                }
+                            }
                     case .classItem(let classItem):
                         ClassRow(classItem: classItem,
                                  trainerName: trainerName(for: classItem.trainerId),
                                  venueName: venueName)
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    itemToCancel = item
+                                    showCancelAlert = true
+                                } label: {
+                                    Label("Cancel", systemImage: "xmark.circle")
+                                }
+                            }
                     }
                 }
             }
@@ -101,10 +124,78 @@ struct MyUpcomingLessonsView: View {
             await bookingsService.loadMyBookings()
             await classesService.loadMyRegisteredClasses()
         }
+        .alert("Cancel Booking", isPresented: $showCancelAlert) {
+            Button("Cancel", role: .cancel) {
+                itemToCancel = nil
+            }
+            Button("Confirm", role: .destructive) {
+                Task {
+                    await handleCancellation()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to cancel this booking? Your lesson credit will be returned to your account.")
+        }
+        .overlay {
+            if isCancelling {
+                ProgressView("Cancelling...")
+                    .padding()
+                    .background(Color(UIColor.systemBackground))
+                    .cornerRadius(10)
+                    .shadow(radius: 10)
+            }
+        }
+        .alert("Cancellation Error", isPresented: Binding(
+            get: { cancelError != nil },
+            set: { if !$0 { cancelError = nil } }
+        )) {
+            Button("OK", role: .cancel) {
+                cancelError = nil
+            }
+        } message: {
+            if let error = cancelError {
+                Text(error)
+            }
+        }
     }
 
     private func trainerName(for trainerId: String) -> String {
         trainersService.trainers.first(where: { $0.id == trainerId })?.name ?? "Trainer"
+    }
+    
+    private func handleCancellation() async {
+        guard let item = itemToCancel else { return }
+        
+        isCancelling = true
+        defer { isCancelling = false }
+        
+        do {
+            switch item {
+            case .lesson(let booking):
+                guard let bookingId = booking.id else {
+                    cancelError = "Invalid booking ID"
+                    return
+                }
+                try await cancellationService.cancelLesson(bookingId: bookingId)
+                
+            case .classItem(let classItem):
+                guard let classId = classItem.id else {
+                    cancelError = "Invalid class ID"
+                    return
+                }
+                try await cancellationService.cancelClassRegistration(classId: classId)
+            }
+            
+            // Refresh all data
+            await bookingsService.loadMyBookings()
+            await classesService.loadMyRegisteredClasses()
+            await packagesService.loadMyPackages()
+            
+            itemToCancel = nil
+            
+        } catch {
+            cancelError = error.localizedDescription
+        }
     }
 }
 

@@ -21,7 +21,7 @@ struct PurchaseLessonsView: View {
     private let expirationMonths = 12
 
     // Selected package option
-    @State private var selected: PackageOption = .fivePack
+    @State private var selected: PackageOption = .single
 
     // Jeff-first ordering
     private var trainersOrdered: [Trainer] {

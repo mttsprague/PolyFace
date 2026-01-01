@@ -55,7 +55,7 @@ struct BookView: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal, Spacing.lg)
-                    .onChange(of: mode) { _, newMode in
+                    .onChange(of: mode) { newMode in
                         if newMode == .classes {
                             Task { await classesService.loadOpenClasses() }
                         }
@@ -110,11 +110,11 @@ struct BookView: View {
             // Sync mode with initialMode binding
             mode = initialMode == 1 ? .classes : .lessons
         }
-        .onChange(of: initialMode) { _, newValue in
+        .onChange(of: initialMode) { newValue in
             mode = newValue == 1 ? .classes : .lessons
         }
         // Observe an Equatable proxy (id) rather than the model itself
-        .onChange(of: selectedTrainer?.id) {
+        .onChange(of: selectedTrainer?.id) { _ in
             Task {
                 await loadMonthIfPossible()
                 await loadDayIfPossible()
@@ -187,7 +187,7 @@ struct BookView: View {
                         await loadDayIfPossible()
                     }
                 }
-                .onChange(of: selectedDate) {
+                .onChange(of: selectedDate) { _ in
                     selectedSlot = nil
                     Task { await loadDayIfPossible() }
                 }
@@ -780,3 +780,4 @@ private struct ClassRegistrationSheet: View {
         isRegistering = false
     }
 }
+

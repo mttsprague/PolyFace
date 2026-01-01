@@ -31,7 +31,7 @@ struct ProfileView: View {
                                           scheduleService: scheduleService)
                         .toolbar {
                             #if os(iOS)
-                            ToolbarItem(placement: .topBarTrailing) {
+                            ToolbarItem(placement: .navigationBarTrailing) {
                                 Button("Sign Out") { auth.signOut() }
                             }
                             #else
@@ -90,8 +90,8 @@ private struct SignedInProfileScreen: View {
     enum Tab: String { case schedule = "SCHEDULE", passes = "PASSES", wallet = "WALLET" }
 
     // Shared venue/location (matches HomeView)
-    private let venueName = "Midtown"
-    private let venueCityStateZip = "Chattanooga, TN 37411"
+    private let venueName = "Oakwood Community Church"
+    private let venueCityStateZip = "Chattanooga, TN 37416"
 
     var body: some View {
         ScrollView {
@@ -865,3 +865,4 @@ private struct PaymentMethodCard: View {
         }
     }
 }
+

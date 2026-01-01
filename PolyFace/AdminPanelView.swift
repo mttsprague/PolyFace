@@ -33,8 +33,8 @@ struct AdminPanelView: View {
             .navigationTitle("Admin Panel")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                if adminService.isAdmin {
-                    ToolbarItem(placement: .primaryAction) {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if adminService.isAdmin {
                         Button {
                             showingCreateClass = true
                         } label: {
@@ -42,6 +42,8 @@ struct AdminPanelView: View {
                                 .font(.title3)
                                 .foregroundStyle(AppTheme.primary)
                         }
+                    } else {
+                        EmptyView()
                     }
                 }
             }
@@ -273,18 +275,24 @@ struct CreateClassView: View {
     @State private var startDate = Date()
     @State private var endDate = Date().addingTimeInterval(3600)
     @State private var maxParticipants = 20
-    @State private var location = "Midtown"
+    @State private var location = "Oakwood Community Church"
     @State private var selectedTrainer: Trainer?
     @State private var isCreating = false
     @State private var errorMessage: String?
     
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section("Class Details") {
                     TextField("Title", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
+                    // iOS 15-compatible multiline input
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description")
+                            .font(.callout)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        TextEditor(text: $description)
+                            .frame(minHeight: 80, maxHeight: 160)
+                    }
                     TextField("Location", text: $location)
                 }
                 

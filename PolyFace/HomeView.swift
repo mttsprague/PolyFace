@@ -18,9 +18,9 @@ struct HomeView: View {
     @Binding var selectedTab: Int
     @Binding var bookViewMode: Int
 
-    private let venueName = "Midtown"
-    private let venueAddressLine = "104 North Tuxedo Avenue"
-    private let venueCityStateZip = "Chattanooga, TN 37411"
+    private let venueName = "Oakwood Community Church"
+    private let venueAddressLine = "3927 Webb Rd"
+    private let venueCityStateZip = "Chattanooga, TN 37416"
 
     private var isAuthenticated: Bool {
         Auth.auth().currentUser != nil

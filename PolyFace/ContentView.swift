@@ -73,7 +73,7 @@ struct AppRootView: View {
                 .task {
                     await adminService.checkAdminStatus()
                 }
-                .onChange(of: auth.isReady) { _, isReady in
+                .onChange(of: auth.isReady) { isReady in
                     if isReady {
                         Task {
                             await adminService.checkAdminStatus()
@@ -99,4 +99,3 @@ struct AppRootView: View {
 #Preview {
     AppRootView()
 }
-

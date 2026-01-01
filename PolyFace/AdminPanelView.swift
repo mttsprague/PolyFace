@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFunctions
 
 struct AdminPanelView: View {
     @StateObject private var adminService = AdminService()
@@ -13,6 +14,7 @@ struct AdminPanelView: View {
     @StateObject private var trainersService = TrainersService()
     @State private var showingCreateClass = false
     @State private var alertItem: AlertItem?
+    @State private var isUpdatingLocations = false
     
     var body: some View {
         NavigationView {
@@ -68,6 +70,30 @@ struct AdminPanelView: View {
     private var adminContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
+                // Migration Button
+                Button {
+                    Task {
+                        await updateClassLocations()
+                    }
+                } label: {
+                    HStack {
+                        if isUpdatingLocations {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
+                        Text("Update Class Locations to Oakwood")
+                    }
+                    .font(.headlineMedium)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppTheme.secondary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .disabled(isUpdatingLocations)
+                
                 VStack(alignment: .leading, spacing: Spacing.sm) {
                     Text("Manage Classes")
                         .font(.headingLarge)
@@ -140,6 +166,39 @@ struct AdminPanelView: View {
         .background(Color.platformGroupedBackground.ignoresSafeArea())
         .refreshable {
             await classesService.loadOpenClasses()
+        }
+    }
+    
+    private func updateClassLocations() async {
+        isUpdatingLocations = true
+        defer { isUpdatingLocations = false }
+        
+        do {
+            let functions = Functions.functions()
+            let callable = functions.httpsCallable("updateClassLocations")
+            let result = try await callable.call()
+            
+            if let data = result.data as? [String: Any],
+               let message = data["message"] as? String {
+                alertItem = AlertItem(
+                    title: "Success",
+                    message: message
+                )
+            } else {
+                alertItem = AlertItem(
+                    title: "Success",
+                    message: "Class locations updated successfully!"
+                )
+            }
+            
+            // Refresh classes list
+            await classesService.loadOpenClasses()
+            
+        } catch {
+            alertItem = AlertItem(
+                title: "Error",
+                message: "Failed to update class locations: \(error.localizedDescription)"
+            )
         }
     }
 }

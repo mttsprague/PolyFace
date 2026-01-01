@@ -13,6 +13,7 @@ import FirebaseFunctions
 @MainActor
 final class StripeService: ObservableObject {
     private let functions = Functions.functions()
+    @Published var lastPaymentIntentId: String?
     
     // Create a payment intent for a lesson package
     func createPaymentIntent(
@@ -35,9 +36,11 @@ final class StripeService: ObservableObject {
         do {
             let result = try await callable.call(data)
             guard let resultData = result.data as? [String: Any],
-                  let clientSecret = resultData["clientSecret"] as? String else {
+                  let clientSecret = resultData["clientSecret"] as? String,
+                  let paymentIntentId = resultData["paymentIntentId"] as? String else {
                 throw StripeError.invalidResponse
             }
+            self.lastPaymentIntentId = paymentIntentId
             return clientSecret
         } catch {
             print("Error creating payment intent: \(error)")

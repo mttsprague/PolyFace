@@ -347,8 +347,22 @@ struct PurchaseLessonsView: View {
         switch result {
         case .completed:
             Task {
-                // Payment succeeded - package will be created by Firebase function
-                await packagesService.loadMyPackages()
+                // Payment succeeded - now confirm and create the package
+                guard let paymentIntentId = stripeService.lastPaymentIntentId else {
+                    alert = .init(title: "Error", message: "Payment succeeded but package creation failed. Please contact support.")
+                    return
+                }
+                
+                do {
+                    // Call backend to confirm payment and create package
+                    try await stripeService.confirmPayment(paymentIntentId: paymentIntentId)
+                    
+                    // Reload packages to show the new one
+                    await packagesService.loadMyPackages()
+                } catch {
+                    alert = .init(title: "Error", message: "Payment succeeded but package creation failed. Please contact support. \(error.localizedDescription)")
+                    return
+                }
                 
                 // Create user-friendly success message based on package type
                 let successMessage: String

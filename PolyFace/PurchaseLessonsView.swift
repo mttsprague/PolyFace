@@ -96,8 +96,6 @@ struct PurchaseLessonsView: View {
                     packageCard(option: .single)
                     packageCard(option: .twoAthlete)
                     packageCard(option: .threeAthlete)
-                    packageCard(option: .fivePack)
-                    packageCard(option: .tenPack)
                     packageCard(option: .classPass)
                 }
                 .padding(.horizontal)
@@ -154,15 +152,13 @@ struct PurchaseLessonsView: View {
     // MARK: - Package Options
 
     private enum PackageOption: CaseIterable, Equatable {
-        case single, twoAthlete, threeAthlete, fivePack, tenPack, classPass
+        case single, twoAthlete, threeAthlete, classPass
 
         var title: String {
             switch self {
             case .single: return "Single Private Lesson"
             case .twoAthlete: return "2-Athlete Private Lesson"
             case .threeAthlete: return "3-Athlete Private Lesson"
-            case .fivePack: return "5 Private Lessons"
-            case .tenPack: return "10 Private Lessons"
             case .classPass: return "Class Pass"
             }
         }
@@ -172,8 +168,6 @@ struct PurchaseLessonsView: View {
             case .single: return nil
             case .twoAthlete: return "Train with a partner"
             case .threeAthlete: return "Train with two partners"
-            case .fivePack: return "Save $25"
-            case .tenPack: return "Save $100"
             case .classPass: return "Register for group classes"
             }
         }
@@ -184,8 +178,6 @@ struct PurchaseLessonsView: View {
             case .single: return "single"
             case .twoAthlete: return "two_athlete"
             case .threeAthlete: return "three_athlete"
-            case .fivePack: return "five_pack"
-            case .tenPack: return "ten_pack"
             case .classPass: return "class_pass"
             }
         }
@@ -195,8 +187,6 @@ struct PurchaseLessonsView: View {
             case .single: return 1
             case .twoAthlete: return 1
             case .threeAthlete: return 1
-            case .fivePack: return 5
-            case .tenPack: return 10
             case .classPass: return 1
             }
         }
@@ -207,8 +197,6 @@ struct PurchaseLessonsView: View {
             case .single: return "$80"
             case .twoAthlete: return "$140"
             case .threeAthlete: return "$180"
-            case .fivePack: return "$375"
-            case .tenPack: return "$700"
             case .classPass: return "$45"
             }
         }
@@ -219,8 +207,6 @@ struct PurchaseLessonsView: View {
             case .single: return 8000  // $80
             case .twoAthlete: return 14000  // $140
             case .threeAthlete: return 18000  // $180
-            case .fivePack: return 37500  // $375
-            case .tenPack: return 70000  // $700
             case .classPass: return 4500  // $45
             }
         }
@@ -373,10 +359,6 @@ struct PurchaseLessonsView: View {
                     successMessage = "Your 2-athlete lesson has been added to your account. Ready to train with a partner!"
                 case .threeAthlete:
                     successMessage = "Your 3-athlete lesson has been added to your account. Ready to train with your group!"
-                case .fivePack:
-                    successMessage = "Your 5-lesson package has been added to your account. Time to start training!"
-                case .tenPack:
-                    successMessage = "Your 10-lesson package has been added to your account. Let's get to work!"
                 case .classPass:
                     successMessage = "Your class pass has been added to your account. You can now register for group classes!"
                 }

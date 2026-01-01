@@ -156,7 +156,7 @@ struct PurchaseLessonsView: View {
 
         var title: String {
             switch self {
-            case .single: return "Single Private Lesson"
+            case .single: return "1-Athlete Private Lesson"
             case .twoAthlete: return "2-Athlete Private Lesson"
             case .threeAthlete: return "3-Athlete Private Lesson"
             case .classPass: return "Class Pass"
@@ -354,7 +354,7 @@ struct PurchaseLessonsView: View {
                 let successMessage: String
                 switch selected {
                 case .single:
-                    successMessage = "Your private lesson has been added to your account. You can now book a session!"
+                    successMessage = "Your 1-athlete lesson has been added to your account. You can now book a session!"
                 case .twoAthlete:
                     successMessage = "Your 2-athlete lesson has been added to your account. Ready to train with a partner!"
                 case .threeAthlete:

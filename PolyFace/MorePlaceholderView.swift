@@ -25,6 +25,43 @@ struct MorePlaceholderView: View {
                     }
                     .padding(.top, Spacing.md)
                     
+                    // Profile Section
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        SectionHeaderView(title: "Profile")
+                        
+                        CardView {
+                            NavigationLink(destination: EditProfileView()) {
+                                HStack(spacing: Spacing.md) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: CornerRadius.xs, style: .continuous)
+                                            .fill(AppTheme.primary.opacity(0.15))
+                                            .frame(width: 48, height: 48)
+                                        
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundStyle(AppTheme.primary)
+                                    }
+                                    
+                                    VStack(alignment: .leading, spacing: Spacing.xxs) {
+                                        Text("Edit Profile")
+                                            .font(.bodyMedium)
+                                            .foregroundStyle(AppTheme.primary)
+                                        
+                                        Text("Update your information")
+                                            .font(.labelMedium)
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                }
+                            }
+                        }
+                    }
+                    
                     // Contact Us Section
                     VStack(alignment: .leading, spacing: Spacing.md) {
                         SectionHeaderView(title: "Contact Us")

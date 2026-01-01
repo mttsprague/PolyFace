@@ -43,6 +43,11 @@ final class UsersService: ObservableObject {
             lastName: data["lastName"] as? String,
             athleteFirstName: data["athleteFirstName"] as? String,
             athleteLastName: data["athleteLastName"] as? String,
+            athlete2FirstName: data["athlete2FirstName"] as? String,
+            athlete2LastName: data["athlete2LastName"] as? String,
+            athletePosition: data["athletePosition"] as? String,
+            athlete2Position: data["athlete2Position"] as? String,
+            notesForCoach: data["notesForCoach"] as? String,
             phoneNumber: data["phoneNumber"] as? String,
             photoURL: data["photoURL"] as? String,
             active: data["active"] as? Bool,
@@ -58,5 +63,61 @@ final class UsersService: ObservableObject {
             return Date(timeIntervalSince1970: seconds)
         }
         return nil
+    }
+    
+    var currentUserProfile: UserProfile? {
+        return currentUser
+    }
+    
+    func updateUserProfile(
+        firstName: String,
+        lastName: String,
+        athleteFirstName: String,
+        athleteLastName: String,
+        athlete2FirstName: String?,
+        athlete2LastName: String?,
+        athletePosition: String?,
+        athlete2Position: String?,
+        notesForCoach: String?,
+        emailAddress: String,
+        phoneNumber: String?
+    ) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "UsersService", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+        }
+        
+        var updateData: [String: Any] = [
+            "firstName": firstName,
+            "lastName": lastName,
+            "athleteFirstName": athleteFirstName,
+            "athleteLastName": athleteLastName,
+            "emailAddress": emailAddress,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        
+        // Add optional fields
+        if let athlete2FirstName = athlete2FirstName {
+            updateData["athlete2FirstName"] = athlete2FirstName
+        }
+        if let athlete2LastName = athlete2LastName {
+            updateData["athlete2LastName"] = athlete2LastName
+        }
+        if let athletePosition = athletePosition {
+            updateData["athletePosition"] = athletePosition
+        }
+        if let athlete2Position = athlete2Position {
+            updateData["athlete2Position"] = athlete2Position
+        }
+        if let notesForCoach = notesForCoach {
+            updateData["notesForCoach"] = notesForCoach
+        }
+        if let phoneNumber = phoneNumber {
+            updateData["phoneNumber"] = phoneNumber
+        }
+        
+        try await db.collection("users").document(uid).updateData(updateData)
+        
+        // Reload the profile after update
+        await loadCurrentUserIfAvailable()
     }
 }

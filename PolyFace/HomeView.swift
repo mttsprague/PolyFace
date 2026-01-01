@@ -128,8 +128,9 @@ struct HomeView: View {
                     }
 
                     // CTA Button
-                    NavigationLink {
-                        ClassesSchedulePlaceholder()
+                    Button {
+                        bookViewMode = 1 // Set to Classes mode
+                        selectedTab = 1  // Switch to Book tab
                     } label: {
                         Text("View Full Schedule")
                     }

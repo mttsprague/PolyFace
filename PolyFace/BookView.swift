@@ -55,7 +55,7 @@ struct BookView: View {
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal, Spacing.lg)
-                    .onChange(of: mode) { newMode in
+                    .onChangeCompat(of: mode) { _, newMode in
                         if newMode == .classes {
                             Task { await classesService.loadOpenClasses() }
                         }
@@ -110,11 +110,11 @@ struct BookView: View {
             // Sync mode with initialMode binding
             mode = initialMode == 1 ? .classes : .lessons
         }
-        .onChange(of: initialMode) { newValue in
+        .onChangeCompat(of: initialMode) { _, newValue in
             mode = newValue == 1 ? .classes : .lessons
         }
         // Observe an Equatable proxy (id) rather than the model itself
-        .onChange(of: selectedTrainer?.id) { _ in
+        .onChangeCompat(of: selectedTrainer?.id) { _, _ in
             Task {
                 await loadMonthIfPossible()
                 await loadDayIfPossible()
@@ -187,7 +187,7 @@ struct BookView: View {
                         await loadDayIfPossible()
                     }
                 }
-                .onChange(of: selectedDate) { _ in
+                .onChangeCompat(of: selectedDate) { _, _ in
                     selectedSlot = nil
                     Task { await loadDayIfPossible() }
                 }
@@ -308,7 +308,7 @@ struct BookView: View {
             Text("Available Classes")
                 .font(.headingMedium)
                 .foregroundStyle(AppTheme.textPrimary)
-                .padding(.horizontal, Spacing.lg)
+            .padding(.horizontal, Spacing.lg)
             
             if classesService.isLoading {
                 HStack {
@@ -781,3 +781,23 @@ private struct ClassRegistrationSheet: View {
     }
 }
 
+// MARK: - iOS 17 onChange compatibility
+
+private extension View {
+    @ViewBuilder
+    func onChangeCompat<V: Equatable>(
+        of value: V,
+        perform action: @escaping (_ oldValue: V, _ newValue: V) -> Void
+    ) -> some View {
+        if #available(iOS 17.0, macOS 14.0, watchOS 10.0, tvOS 17.0, visionOS 1.0, *) {
+            self.onChange(of: value) { oldValue, newValue in
+                action(oldValue, newValue)
+            }
+        } else {
+            // Fallback to the deprecated single-parameter variant without warnings here.
+            self.onChange(of: value) { newValue in
+                action(newValue, newValue)
+            }
+        }
+    }
+}

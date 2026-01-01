@@ -77,7 +77,11 @@ struct MyUpcomingLessonsView: View {
                         LessonRow(booking: booking,
                                   trainerName: trainerName(for: booking.trainerUID),
                                   venueName: venueName,
-                                  venueCityStateZip: venueCityStateZip)
+                                  venueCityStateZip: venueCityStateZip,
+                                  onCancel: {
+                                      itemToCancel = item
+                                      showCancelAlert = true
+                                  })
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -91,7 +95,11 @@ struct MyUpcomingLessonsView: View {
                     case .classItem(let classItem):
                         ClassRow(classItem: classItem,
                                  trainerName: trainerName(for: classItem.trainerId),
-                                 venueName: venueName)
+                                 venueName: venueName,
+                                 onCancel: {
+                                     itemToCancel = item
+                                     showCancelAlert = true
+                                 })
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -204,6 +212,7 @@ private struct LessonRow: View {
     let trainerName: String
     let venueName: String
     let venueCityStateZip: String
+    let onCancel: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -246,6 +255,13 @@ private struct LessonRow: View {
             }
 
             Spacer()
+            
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
         }
         .padding()
         .background(
@@ -259,6 +275,7 @@ private struct ClassRow: View {
     let classItem: GroupClass
     let trainerName: String
     let venueName: String
+    let onCancel: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -291,6 +308,13 @@ private struct ClassRow: View {
                 }
             }
             Spacer()
+            
+            Button(action: onCancel) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
         }
         .padding()
         .background(

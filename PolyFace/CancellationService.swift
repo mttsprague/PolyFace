@@ -7,9 +7,13 @@
 
 import Foundation
 import FirebaseFunctions
+import Combine
 
 @MainActor
 final class CancellationService: ObservableObject {
+    // Satisfy ObservableObject conformance when there are no @Published properties
+    let objectWillChange = ObservableObjectPublisher()
+    
     private let functions = Functions.functions()
     
     func cancelLesson(bookingId: String) async throws {

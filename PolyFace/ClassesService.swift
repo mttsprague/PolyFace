@@ -66,6 +66,27 @@ final class ClassesService: ObservableObject {
         }
     }
     
+    // Load all classes for admin (no filters)
+    func loadAllClasses() async {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            let snapshot = try await db.collection("classes")
+                .order(by: "startTime", descending: true)
+                .getDocuments()
+            
+            classes = snapshot.documents.compactMap { doc in
+                decodeClass(id: doc.documentID, data: doc.data())
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            classes = []
+        }
+        
+        isLoading = false
+    }
+    
     // Register for a class using a class pass (calls backend function)
     func registerForClassWithPass(classId: String, classPassPackageId: String) async throws {
         let data: [String: Any] = [

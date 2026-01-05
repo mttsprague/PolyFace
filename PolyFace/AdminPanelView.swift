@@ -62,7 +62,7 @@ struct AdminPanelView: View {
             }
             .sheet(isPresented: $showingCreateClass) {
                 CreateClassView(adminService: adminService, trainersService: trainersService) {
-                    Task { await classesService.loadOpenClasses() }
+                    Task { await classesService.loadAllClasses() }
                 }
             }
             .alert(item: $alertItem) { item in
@@ -72,7 +72,7 @@ struct AdminPanelView: View {
         .task {
             await adminService.checkAdminStatus()
             if adminService.isAdmin {
-                await classesService.loadOpenClasses()
+                await classesService.loadAllClasses()
                 await trainersService.loadAll()
                 await adminService.loadAllUsers()
             }
@@ -103,7 +103,7 @@ struct AdminPanelView: View {
         .background(Color.platformGroupedBackground.ignoresSafeArea())
         .refreshable {
             if tabSelection == .classes {
-                await classesService.loadOpenClasses()
+                await classesService.loadAllClasses()
             } else {
                 await adminService.loadAllUsers()
             }
@@ -302,7 +302,7 @@ struct AdminPanelView: View {
                                                 classId: classItem.id ?? "",
                                                 isOpen: isOpen
                                             )
-                                            await classesService.loadOpenClasses()
+                                            await classesService.loadAllClasses()
                                         } catch {
                                             alertItem = AlertItem(
                                                 title: "Error",
@@ -315,7 +315,7 @@ struct AdminPanelView: View {
                                     Task {
                                         do {
                                             try await adminService.deleteClass(classId: classItem.id ?? "")
-                                            await classesService.loadOpenClasses()
+                                            await classesService.loadAllClasses()
                                         } catch {
                                             alertItem = AlertItem(
                                                 title: "Error",

@@ -606,7 +606,7 @@ private struct SignedInProfileScreen: View {
     private var privatePassesRemaining: Int {
         packagesService.packages.reduce(into: 0) { sum, pkg in
             guard pkg.expirationDate >= Date() else { return }
-            guard ["single", "five_pack", "ten_pack"].contains(pkg.packageType) else { return }
+            guard pkg.packageType == "private" else { return }
             sum += max(0, pkg.lessonsRemaining)
         }
     }
@@ -614,7 +614,7 @@ private struct SignedInProfileScreen: View {
     private var twoAthletePassesRemaining: Int {
         packagesService.packages.reduce(into: 0) { sum, pkg in
             guard pkg.expirationDate >= Date() else { return }
-            guard pkg.packageType == "two_athlete" else { return }
+            guard pkg.packageType == "2_athlete" else { return }
             sum += max(0, pkg.lessonsRemaining)
         }
     }
@@ -622,7 +622,7 @@ private struct SignedInProfileScreen: View {
     private var threeAthletePassesRemaining: Int {
         packagesService.packages.reduce(into: 0) { sum, pkg in
             guard pkg.expirationDate >= Date() else { return }
-            guard pkg.packageType == "three_athlete" else { return }
+            guard pkg.packageType == "3_athlete" else { return }
             sum += max(0, pkg.lessonsRemaining)
         }
     }

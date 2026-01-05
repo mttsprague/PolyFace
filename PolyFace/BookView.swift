@@ -432,18 +432,16 @@ struct BookView: View {
     
     private func formatPackageName(_ package: LessonPackage) -> String {
         switch package.packageType {
-        case "single":
-            return "Single Lesson Pass"
-        case "five_pack":
-            return "5-Lesson Package"
-        case "ten_pack":
-            return "10-Lesson Package"
+        case "private":
+            return "Private Lesson Pass"
+        case "2_athlete":
+            return "2-Athlete Pass"
+        case "3_athlete":
+            return "3-Athlete Pass"
+        case "class_pass":
+            return "Class Pass"
         default:
-            if package.totalLessons == 1 {
-                return "Single Lesson Pass"
-            } else {
-                return "\(package.totalLessons)-Lesson Package"
-            }
+            return "\(package.totalLessons)-Lesson Pass"
         }
     }
 

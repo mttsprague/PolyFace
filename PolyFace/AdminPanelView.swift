@@ -18,7 +18,7 @@ struct AdminPanelView: View {
     
     // Pass management states
     @State private var selectedClient: SimpleUser?
-    @State private var selectedPassType: String = "single"
+    @State private var selectedPassType: String = "private"
     @State private var passQuantity: Int = 1
     @State private var isAddingPass = false
     
@@ -175,22 +175,24 @@ struct AdminPanelView: View {
                         
                         Menu {
                             Button {
-                                selectedPassType = "single"
-                                passQuantity = 1
+                                selectedPassType = "private"
                             } label: {
-                                Text("Single Lesson Pass (1 lesson)")
+                                Text("Private Lesson Pass (1 athlete)")
                             }
                             Button {
-                                selectedPassType = "five_pack"
-                                passQuantity = 5
+                                selectedPassType = "2_athlete"
                             } label: {
-                                Text("5-Lesson Package (5 lessons)")
+                                Text("2-Athlete Pass")
                             }
                             Button {
-                                selectedPassType = "ten_pack"
-                                passQuantity = 10
+                                selectedPassType = "3_athlete"
                             } label: {
-                                Text("10-Lesson Package (10 lessons)")
+                                Text("3-Athlete Pass")
+                            }
+                            Button {
+                                selectedPassType = "class_pass"
+                            } label: {
+                                Text("Class Pass")
                             }
                         } label: {
                             HStack {
@@ -212,17 +214,19 @@ struct AdminPanelView: View {
                     
                     Divider()
                     
-                    // Quantity display
+                    // Quantity input
                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                        Text("Lessons to Add")
+                        Text("Number of Passes")
                             .font(.labelMedium)
                             .foregroundStyle(AppTheme.textSecondary)
                         
-                        HStack {
-                            Text("\(passQuantity) lesson\(passQuantity == 1 ? "" : "s")")
-                                .font(.headingSmall)
-                                .foregroundStyle(AppTheme.primary)
-                            Spacer()
+                        Stepper(value: $passQuantity, in: 1...100) {
+                            HStack {
+                                Text("\(passQuantity) pass\(passQuantity == 1 ? "" : "es")")
+                                    .font(.headingSmall)
+                                    .foregroundStyle(AppTheme.primary)
+                                Spacer()
+                            }
                         }
                         .padding(Spacing.sm)
                         .background(
@@ -332,12 +336,14 @@ struct AdminPanelView: View {
     
     private func passTypeName(_ type: String) -> String {
         switch type {
-        case "single":
-            return "Single Lesson Pass (1 lesson)"
-        case "five_pack":
-            return "5-Lesson Package (5 lessons)"
-        case "ten_pack":
-            return "10-Lesson Package (10 lessons)"
+        case "private":
+            return "Private Lesson Pass (1 athlete)"
+        case "2_athlete":
+            return "2-Athlete Pass"
+        case "3_athlete":
+            return "3-Athlete Pass"
+        case "class_pass":
+            return "Class Pass"
         default:
             return "Unknown"
         }
@@ -358,12 +364,12 @@ struct AdminPanelView: View {
             // Show success alert
             alertItem = AlertItem(
                 title: "Pass Added",
-                message: "Successfully added \(passQuantity) lesson\(passQuantity == 1 ? "" : "s") to \(client.firstName) \(client.lastName)'s account."
+                message: "Successfully added \(passQuantity) \(passTypeName(selectedPassType))\(passQuantity == 1 ? "" : "s") to \(client.firstName) \(client.lastName)'s account."
             )
             
             // Reset selections
             selectedClient = nil
-            selectedPassType = "single"
+            selectedPassType = "private"
             passQuantity = 1
             
             // Refresh data

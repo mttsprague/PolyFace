@@ -49,8 +49,8 @@ final class PackagesService: ObservableObject {
     // Create a new lesson package document under the signed-in user.
     // This conforms to the rule requirements:
     // - lessonsUsed = 0 on creation
-    // - allowed packageType: single | five_pack | ten_pack
-    // - allowed totalLessons: 1 | 5 | 10
+    // - allowed packageType: private | 2_athlete | 3_athlete | class_pass
+    // - totalLessons: any positive integer
     // - purchaseDate/expirationDate are Dates (serialized as Firestore Timestamps)
     func createLessonPackage(packageType: String,
                              totalLessons: Int,
@@ -62,8 +62,8 @@ final class PackagesService: ObservableObject {
         }
 
         let payload: [String: Any?] = [
-            "packageType": packageType,        // "single" | "five_pack" | "ten_pack"
-            "totalLessons": totalLessons,      // 1 | 5 | 10
+            "packageType": packageType,        // "private" | "2_athlete" | "3_athlete" | "class_pass"
+            "totalLessons": totalLessons,
             "lessonsUsed": 0,                  // must be 0 on create per rules
             "purchaseDate": purchaseDate,      // Firestore will store as Timestamp
             "expirationDate": expirationDate,  // Firestore will store as Timestamp

@@ -175,9 +175,9 @@ struct PurchaseLessonsView: View {
         // Firestore mapping
         var packageType: String {
             switch self {
-            case .single: return "single"
-            case .twoAthlete: return "two_athlete"
-            case .threeAthlete: return "three_athlete"
+            case .single: return "private"
+            case .twoAthlete: return "2_athlete"
+            case .threeAthlete: return "3_athlete"
             case .classPass: return "class_pass"
             }
         }

@@ -66,7 +66,7 @@ struct HomeView: View {
                                 }
 
                                 VStack(alignment: .leading, spacing: Spacing.xxs) {
-                                    Text("PolyFace Volleyball")
+                                    Text("PolyFace Volleyball Academy")
                                         .font(.headingSmall)
                                         .foregroundStyle(AppTheme.textPrimary)
                                     

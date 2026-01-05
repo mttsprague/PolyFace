@@ -129,7 +129,7 @@ struct HomeView: View {
 
                     // CTA Button
                     Button {
-                        bookViewMode = 1 // Set to Classes mode
+                        bookViewMode = 0 // Set to Lessons mode
                         selectedTab = 1  // Switch to Book tab
                     } label: {
                         Text("View Full Schedule")

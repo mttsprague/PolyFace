@@ -61,90 +61,115 @@ struct BookView: View {
     }
 
     var body: some View {
+        mainContent
+            .navigationViewStyle(.stack)
+            .task {
+                await loadInitialData()
+            }
+            .onAppear {
+                setupInitialMode()
+            }
+            .onChangeCompat(of: initialMode) { _, newValue in
+                mode = newValue == 1 ? .classes : .lessons
+            }
+            .onChangeCompat(of: selectedTrainer?.id) { _, _ in
+                Task {
+                    await loadMonthIfPossible()
+                    await loadDayIfPossible()
+                }
+            }
+            .onChangeCompat(of: packagesService.packages) { _, _ in
+                updateSelectedPackage()
+            }
+    }
+    
+    private var mainContent: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.xl) {
-
-                    Picker("Mode", selection: $mode) {
-                        Text("Lessons").tag(Mode.lessons)
-                        Text("Classes").tag(Mode.classes)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, Spacing.lg)
-                    .onChangeCompat(of: mode) { _, newMode in
-                        if newMode == .classes {
-                            Task { await classesService.loadOpenClasses() }
-                        }
-                    }
-                    
-                    // Show lessons or classes based on mode
-                    if mode == .lessons {
-                        lessonsContent
-                    } else {
-                        classesContent
-                    }
+            contentView
+                .background(Color.platformGroupedBackground.ignoresSafeArea())
+                .navigationTitle("Book a Session")
+                .navigationBarTitleDisplayMode(.large)
+                .alert(item: $bookingAlert) { alert in
+                    Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
                 }
-                .padding(.vertical, Spacing.lg)
-            }
-            .background(Color.platformGroupedBackground.ignoresSafeArea())
-            .navigationTitle("Book a Session")
-            .navigationBarTitleDisplayMode(.large)
-            .alert(item: $bookingAlert) { alert in
-                Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
-            }
-            .sheet(item: $selectedClass) { classItem in
-                ClassRegistrationSheet(
-                    classItem: classItem,
-                    classesService: classesService,
-                    usersService: usersService,
-                    packagesService: packagesService,
-                    onRegistered: {
-                        bookingAlert = BookingAlert(title: "Registered!", message: "You're registered for \(classItem.title)")
-                        Task { await classesService.loadOpenClasses() }
-                    }
-                )
-            }
+                .sheet(item: $selectedClass) { classItem in
+                    classRegistrationSheet(for: classItem)
+                }
         }
-        .navigationViewStyle(.stack)
-        .task {
-            if trainersService.trainers.isEmpty {
-                await trainersService.loadAll()
-            }
-            // Auto-select Jeff (or first trainer) once trainers are available
-            if selectedTrainer == nil {
-                if let jeff = trainersService.trainers.first(where: { isJeff($0) }) {
-                    selectedTrainer = jeff
+    }
+    
+    private var contentView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
+                modePicker
+                
+                // Show lessons or classes based on mode
+                if mode == .lessons {
+                    lessonsContent
                 } else {
-                    selectedTrainer = trainersService.trainers.first
+                    classesContent
                 }
-                // After selecting default trainer, load availability
-                await loadMonthIfPossible()
-                await loadDayIfPossible()
             }
-            await packagesService.loadMyPackages()
+            .padding(.vertical, Spacing.lg)
         }
-        .onAppear {
-            // Sync mode with initialMode binding
-            mode = initialMode == 1 ? .classes : .lessons
+    }
+    
+    private var modePicker: some View {
+        Picker("Mode", selection: $mode) {
+            Text("Lessons").tag(Mode.lessons)
+            Text("Classes").tag(Mode.classes)
         }
-        .onChangeCompat(of: initialMode) { _, newValue in
-            mode = newValue == 1 ? .classes : .lessons
-        }
-        // Observe an Equatable proxy (id) rather than the model itself
-        .onChangeCompat(of: selectedTrainer?.id) { _, _ in
-            Task {
-                await loadMonthIfPossible()
-                await loadDayIfPossible()
+        .pickerStyle(.segmented)
+        .padding(.horizontal, Spacing.lg)
+        .onChangeCompat(of: mode) { _, newMode in
+            if newMode == .classes {
+                Task { await classesService.loadOpenClasses() }
             }
         }
-        // Auto-select package when only one is available, or reset if selected becomes invalid
-        .onChangeCompat(of: packagesService.packages) { _, _ in
-            if availableLessonPackages.count == 1 {
-                selectedPackage = availableLessonPackages.first
-            } else if let selected = selectedPackage, !availableLessonPackages.contains(where: { $0.id == selected.id }) {
-                // Reset if selected package is no longer available
-                selectedPackage = nil
+    }
+    
+    private func classRegistrationSheet(for classItem: GroupClass) -> some View {
+        ClassRegistrationSheet(
+            classItem: classItem,
+            classesService: classesService,
+            usersService: usersService,
+            packagesService: packagesService,
+            onRegistered: {
+                bookingAlert = BookingAlert(title: "Registered!", message: "You're registered for \(classItem.title)")
+                Task { await classesService.loadOpenClasses() }
             }
+        )
+    }
+    
+    private func loadInitialData() async {
+        if trainersService.trainers.isEmpty {
+            await trainersService.loadAll()
+        }
+        // Auto-select Jeff (or first trainer) once trainers are available
+        if selectedTrainer == nil {
+            if let jeff = trainersService.trainers.first(where: { isJeff($0) }) {
+                selectedTrainer = jeff
+            } else {
+                selectedTrainer = trainersService.trainers.first
+            }
+            // After selecting default trainer, load availability
+            await loadMonthIfPossible()
+            await loadDayIfPossible()
+        }
+        await packagesService.loadMyPackages()
+    }
+    
+    private func setupInitialMode() {
+        // Sync mode with initialMode binding
+        mode = initialMode == 1 ? .classes : .lessons
+    }
+    
+    private func updateSelectedPackage() {
+        if availableLessonPackages.count == 1 {
+            selectedPackage = availableLessonPackages.first
+        } else if let selected = selectedPackage, !availableLessonPackages.contains(where: { $0.id == selected.id }) {
+            // Reset if selected package is no longer available
+            selectedPackage = nil
         }
     }
     

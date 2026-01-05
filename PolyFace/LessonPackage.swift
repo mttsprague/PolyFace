@@ -9,7 +9,7 @@
 import Foundation
 
 // /users/{uid}/lessonPackages/{packageId}
-struct LessonPackage: Identifiable {
+struct LessonPackage: Identifiable, Equatable {
     var id: String?
     let packageType: String
     let totalLessons: Int

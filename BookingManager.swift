@@ -11,16 +11,23 @@ final class BookingManager: ObservableObject {
     private let functions = Functions.functions()
     private let db = Firestore.firestore()
 
-    // The lessonPackageId argument is ignored; we now always choose the package
-    // with the closest expiration date that still has remaining credits.
-    func bookLesson(trainerId: String, slotId: String, lessonPackageId _: String) async throws -> Booking {
+    // If lessonPackageId is provided and non-empty, use it directly.
+    // Otherwise, automatically choose the package with the closest expiration date.
+    func bookLesson(trainerId: String, slotId: String, lessonPackageId: String) async throws -> Booking {
         guard let user = Auth.auth().currentUser else { throw BookingCallError.notAuthenticated }
         let uid = user.uid
 
-        // 1) Choose the package that expires the soonest but is still valid.
-        let chosenPackageId = try await chooseSoonestExpiringPackageId(for: uid)
-        guard let packageId = chosenPackageId else {
-            throw BookingCallError.noAvailablePackage
+        // 1) Determine which package to use
+        let packageId: String
+        if !lessonPackageId.isEmpty {
+            // User explicitly selected a package
+            packageId = lessonPackageId
+        } else {
+            // Auto-select the package that expires the soonest but is still valid
+            guard let chosenId = try await chooseSoonestExpiringPackageId(for: uid) else {
+                throw BookingCallError.noAvailablePackage
+            }
+            packageId = chosenId
         }
 
         // Debug prints to verify what we send to the Cloud Function

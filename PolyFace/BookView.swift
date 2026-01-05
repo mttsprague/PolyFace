@@ -29,6 +29,7 @@ struct BookView: View {
     @State private var bookingAlert: BookingAlert?
     @State private var selectedClass: GroupClass?
     @State private var showingClassRegistration = false
+    @State private var selectedPackage: LessonPackage?
 
     enum Mode: String, CaseIterable { case lessons = "Lessons", classes = "Classes" }
 
@@ -42,6 +43,15 @@ struct BookView: View {
             let rn = rhs.name ?? ""
             return ln.localizedCaseInsensitiveCompare(rn) == .orderedAscending
         }
+    }
+    
+    // Get available lesson packages (excluding class passes)
+    private var availableLessonPackages: [LessonPackage] {
+        packagesService.packages.filter {
+            $0.packageType != "class_pass" &&
+            $0.lessonsRemaining > 0 &&
+            $0.expirationDate >= Date()
+        }.sorted { $0.expirationDate < $1.expirationDate }
     }
 
     var body: some View {
@@ -119,6 +129,15 @@ struct BookView: View {
             Task {
                 await loadMonthIfPossible()
                 await loadDayIfPossible()
+            }
+        }
+        // Auto-select package when only one is available, or reset if selected becomes invalid
+        .onChangeCompat(of: packagesService.packages) { _, _ in
+            if availableLessonPackages.count == 1 {
+                selectedPackage = availableLessonPackages.first
+            } else if let selected = selectedPackage, !availableLessonPackages.contains(where: { $0.id == selected.id }) {
+                // Reset if selected package is no longer available
+                selectedPackage = nil
             }
         }
     }
@@ -282,6 +301,59 @@ struct BookView: View {
                     }
                 }
             }
+            
+            // Package selection (only show if user has multiple available passes)
+            if availableLessonPackages.count > 1 {
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    Text("Select Pass to Use")
+                        .font(.headingMedium)
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .padding(.horizontal, Spacing.lg)
+
+                    CardView(padding: Spacing.md) {
+                        Menu {
+                            ForEach(availableLessonPackages) { package in
+                                Button {
+                                    selectedPackage = package
+                                } label: {
+                                    HStack(spacing: Spacing.sm) {
+                                        Text(formatPackageName(package))
+                                            .font(.bodyMedium)
+                                        Text("(\(package.lessonsRemaining) left)")
+                                            .font(.bodySmall)
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: Spacing.md) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: CornerRadius.xs, style: .continuous)
+                                        .fill(AppTheme.primary.opacity(0.08))
+                                        .frame(width: 48, height: 48)
+                                    Image(systemName: "ticket")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(AppTheme.primary)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: Spacing.xxs) {
+                                    Text(selectedPackage != nil ? formatPackageName(selectedPackage!) : "Choose a pass")
+                                        .font(.headingSmall)
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                    Text(selectedPackage != nil ? "\(selectedPackage!.lessonsRemaining) lessons remaining" : "Select which pass to use")
+                                        .font(.bodySmall)
+                                        .foregroundStyle(AppTheme.textSecondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AppTheme.textTertiary)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Spacing.lg)
+                }
+            }
 
             Button {
                 if !packagesService.hasAvailableLessons {
@@ -304,8 +376,8 @@ struct BookView: View {
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(bookingInFlight || selectedTrainer == nil || selectedSlot == nil)
-            .opacity((selectedTrainer != nil && selectedSlot != nil) ? 1.0 : 0.5)
+            .disabled(bookingInFlight || selectedTrainer == nil || selectedSlot == nil || (availableLessonPackages.count > 1 && selectedPackage == nil))
+            .opacity((selectedTrainer != nil && selectedSlot != nil && (availableLessonPackages.count <= 1 || selectedPackage != nil)) ? 1.0 : 0.5)
             .padding(.horizontal, Spacing.lg)
             .padding(.top, Spacing.md)
         }
@@ -357,6 +429,23 @@ struct BookView: View {
         (trainer.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             .localizedCaseInsensitiveCompare("Jeff Schmitz") == .orderedSame
     }
+    
+    private func formatPackageName(_ package: LessonPackage) -> String {
+        switch package.packageType {
+        case "single":
+            return "Single Lesson Pass"
+        case "five_pack":
+            return "5-Lesson Package"
+        case "ten_pack":
+            return "10-Lesson Package"
+        default:
+            if package.totalLessons == 1 {
+                return "Single Lesson Pass"
+            } else {
+                return "\(package.totalLessons)-Lesson Package"
+            }
+        }
+    }
 
     private var isBookEnabled: Bool {
         guard mode == .lessons,
@@ -405,11 +494,21 @@ struct BookView: View {
             return
         }
         
+        // If user has multiple passes, ensure they've selected one
+        if availableLessonPackages.count > 1 && selectedPackage == nil {
+            bookingAlert = .init(
+                title: "Select a Pass",
+                message: "Please select which pass you'd like to use for this booking."
+            )
+            return
+        }
+        
         bookingInFlight = true
         defer { bookingInFlight = false }
         do {
-            // BookingManager ignores the lessonPackageId argument and chooses automatically.
-            _ = try await bookingManager.bookLesson(trainerId: trainerId, slotId: slotId, lessonPackageId: "")
+            // Use selected package if available, otherwise pass empty string for auto-selection
+            let packageId = selectedPackage?.id ?? ""
+            _ = try await bookingManager.bookLesson(trainerId: trainerId, slotId: slotId, lessonPackageId: packageId)
             
             // Create success message with trainer name
             let trainerName = selectedTrainer?.name ?? "your trainer"

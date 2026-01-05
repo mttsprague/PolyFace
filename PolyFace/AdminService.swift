@@ -14,6 +14,7 @@ import FirebaseFirestore
 final class AdminService: ObservableObject {
     @Published private(set) var isAdmin = false
     @Published private(set) var isLoading = false
+    @Published private(set) var allUsers: [SimpleUser] = []
     
     private let db = Firestore.firestore()
     
@@ -121,4 +122,63 @@ final class AdminService: ObservableObject {
         
         try await db.collection("classes").document(classId).delete()
     }
+    
+    // Load all users (admin only)
+    func loadAllUsers() async {
+        guard isAdmin else { return }
+        
+        do {
+            let snapshot = try await db.collection("users").getDocuments()
+            allUsers = snapshot.documents.compactMap { doc in
+                let data = doc.data()
+                let firstName = data["firstName"] as? String ?? ""
+                let lastName = data["lastName"] as? String ?? ""
+                let athleteFirst = data["athleteFirstName"] as? String ?? ""
+                let athleteLast = data["athleteLastName"] as? String ?? ""
+                
+                return SimpleUser(
+                    id: doc.documentID,
+                    firstName: firstName,
+                    lastName: lastName,
+                    athleteName: athleteFirst.isEmpty ? "" : "\(athleteFirst) \(athleteLast)".trimmingCharacters(in: .whitespaces)
+                )
+            }.sorted { $0.lastName < $1.lastName }
+        } catch {
+            print("Error loading users: \(error)")
+            allUsers = []
+        }
+    }
+    
+    // Add pass to client (admin only)
+    func addPassToClient(clientId: String, passType: String, totalLessons: Int) async throws {
+        guard isAdmin else {
+            throw NSError(domain: "AdminService", code: -1,
+                         userInfo: [NSLocalizedDescriptionKey: "Unauthorized"])
+        }
+        
+        let now = Date()
+        let expirationDate = Calendar.current.date(byAdding: .year, value: 1, to: now) ?? now.addingTimeInterval(365 * 24 * 60 * 60)
+        
+        let passData: [String: Any] = [
+            "packageType": passType,
+            "totalLessons": totalLessons,
+            "lessonsUsed": 0,
+            "purchaseDate": Timestamp(date: now),
+            "expirationDate": Timestamp(date: expirationDate),
+            "transactionId": "ADMIN_ADDED_\(UUID().uuidString)"
+        ]
+        
+        try await db.collection("users")
+            .document(clientId)
+            .collection("lessonPackages")
+            .addDocument(data: passData)
+    }
+}
+
+// Simple user model for admin dropdown
+struct SimpleUser: Identifiable {
+    let id: String
+    let firstName: String
+    let lastName: String
+    let athleteName: String
 }

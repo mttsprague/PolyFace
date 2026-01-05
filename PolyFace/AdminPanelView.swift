@@ -11,8 +11,21 @@ struct AdminPanelView: View {
     @StateObject private var adminService = AdminService()
     @StateObject private var classesService = ClassesService()
     @StateObject private var trainersService = TrainersService()
+    @StateObject private var packagesService = PackagesService()
     @State private var showingCreateClass = false
     @State private var alertItem: AlertItem?
+    @State private var tabSelection: AdminTab = .passes
+    
+    // Pass management states
+    @State private var selectedClient: SimpleUser?
+    @State private var selectedPassType: String = "single"
+    @State private var passQuantity: Int = 1
+    @State private var isAddingPass = false
+    
+    enum AdminTab: String, CaseIterable {
+        case passes = "Passes"
+        case classes = "Classes"
+    }
     
     var body: some View {
         NavigationView {
@@ -34,7 +47,7 @@ struct AdminPanelView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if adminService.isAdmin {
+                    if adminService.isAdmin && tabSelection == .classes {
                         Button {
                             showingCreateClass = true
                         } label: {
@@ -61,6 +74,7 @@ struct AdminPanelView: View {
             if adminService.isAdmin {
                 await classesService.loadOpenClasses()
                 await trainersService.loadAll()
+                await adminService.loadAllUsers()
             }
         }
     }
@@ -68,35 +82,212 @@ struct AdminPanelView: View {
     private var adminContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Text("Manage Classes")
-                        .font(.headingLarge)
-                        .foregroundStyle(AppTheme.textPrimary)
-                    
-                    Text("\(classesService.classes.count) active classes")
-                        .font(.bodyMedium)
-                        .foregroundStyle(AppTheme.textSecondary)
+                // Tab selector
+                Picker("Tab", selection: $tabSelection) {
+                    Text("Passes").tag(AdminTab.passes)
+                    Text("Classes").tag(AdminTab.classes)
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, Spacing.lg)
                 .padding(.top, Spacing.md)
                 
-                if classesService.isLoading {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                            .tint(AppTheme.primary)
-                        Spacer()
-                    }
-                    .padding(Spacing.xl)
-                } else if classesService.classes.isEmpty {
-                    EmptyStateView(
-                        icon: "calendar.badge.plus",
-                        title: "No Classes Yet",
-                        message: "Create your first class to get started.",
-                        action: { showingCreateClass = true },
-                        actionTitle: "Create Class"
-                    )
+                // Content based on tab
+                if tabSelection == .passes {
+                    passesContent
                 } else {
-                    VStack(spacing: Spacing.sm) {
+                    classesContent
+                }
+            }
+            .padding(.bottom, Spacing.xxxl)
+        }
+        .background(Color.platformGroupedBackground.ignoresSafeArea())
+        .refreshable {
+            if tabSelection == .classes {
+                await classesService.loadOpenClasses()
+            } else {
+                await adminService.loadAllUsers()
+            }
+        }
+    }
+    
+    // MARK: - Passes Content
+    
+    private var passesContent: some View {
+        VStack(alignment: .leading, spacing: Spacing.xl) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text("Manage Passes")
+                    .font(.headingLarge)
+                    .foregroundStyle(AppTheme.textPrimary)
+                
+                Text("Add lesson passes to client accounts")
+                    .font(.bodyMedium)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            .padding(.horizontal, Spacing.lg)
+            
+            CardView {
+                VStack(alignment: .leading, spacing: Spacing.lg) {
+                    // Client selection
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text("Select Client")
+                            .font(.labelMedium)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        
+                        Menu {
+                            ForEach(adminService.allUsers) { user in
+                                Button {
+                                    selectedClient = user
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text("\(user.firstName) \(user.lastName)")
+                                        if !user.athleteName.isEmpty {
+                                            Text("Athlete: \(user.athleteName)")
+                                                .font(.caption)
+                                        }
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Text(selectedClient != nil ? "\(selectedClient!.firstName) \(selectedClient!.lastName)" : "Choose a client")
+                                    .font(.bodyMedium)
+                                    .foregroundStyle(selectedClient != nil ? AppTheme.textPrimary : AppTheme.textSecondary)
+                                Spacer()
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AppTheme.textTertiary)
+                            }
+                            .padding(Spacing.sm)
+                            .background(
+                                RoundedRectangle(cornerRadius: CornerRadius.xs, style: .continuous)
+                                    .fill(Color.platformGroupedBackground)
+                            )
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // Pass type selection
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text("Pass Type")
+                            .font(.labelMedium)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        
+                        Menu {
+                            Button {
+                                selectedPassType = "single"
+                                passQuantity = 1
+                            } label: {
+                                Text("Single Lesson Pass (1 lesson)")
+                            }
+                            Button {
+                                selectedPassType = "five_pack"
+                                passQuantity = 5
+                            } label: {
+                                Text("5-Lesson Package (5 lessons)")
+                            }
+                            Button {
+                                selectedPassType = "ten_pack"
+                                passQuantity = 10
+                            } label: {
+                                Text("10-Lesson Package (10 lessons)")
+                            }
+                        } label: {
+                            HStack {
+                                Text(passTypeName(selectedPassType))
+                                    .font(.bodyMedium)
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Spacer()
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(AppTheme.textTertiary)
+                            }
+                            .padding(Spacing.sm)
+                            .background(
+                                RoundedRectangle(cornerRadius: CornerRadius.xs, style: .continuous)
+                                    .fill(Color.platformGroupedBackground)
+                            )
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // Quantity display
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text("Lessons to Add")
+                            .font(.labelMedium)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        
+                        HStack {
+                            Text("\(passQuantity) lesson\(passQuantity == 1 ? "" : "s")")
+                                .font(.headingSmall)
+                                .foregroundStyle(AppTheme.primary)
+                            Spacer()
+                        }
+                        .padding(Spacing.sm)
+                        .background(
+                            RoundedRectangle(cornerRadius: CornerRadius.xs, style: .continuous)
+                                .fill(AppTheme.primary.opacity(0.08))
+                        )
+                    }
+                    
+                    // Submit button
+                    Button {
+                        Task { await addPassToClient() }
+                    } label: {
+                        HStack {
+                            if isAddingPass {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Image(systemName: "plus.circle.fill")
+                            }
+                            Text(isAddingPass ? "Adding Pass..." : "Add Pass to Client")
+                        }
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(selectedClient == nil || isAddingPass)
+                    .opacity(selectedClient != nil ? 1.0 : 0.5)
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+        }
+    }
+    
+    // MARK: - Classes Content
+    
+    private var classesContent: some View {
+        VStack(alignment: .leading, spacing: Spacing.xl) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text("Manage Classes")
+                    .font(.headingLarge)
+                    .foregroundStyle(AppTheme.textPrimary)
+                
+                Text("\(classesService.classes.count) active classes")
+                    .font(.bodyMedium)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            .padding(.horizontal, Spacing.lg)
+            
+            if classesService.isLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .tint(AppTheme.primary)
+                    Spacer()
+                }
+                .padding(Spacing.xl)
+            } else if classesService.classes.isEmpty {
+                EmptyStateView(
+                    icon: "calendar.badge.plus",
+                    title: "No Classes Yet",
+                    message: "Create your first class to get started.",
+                    action: { showingCreateClass = true },
+                    actionTitle: "Create Class"
+                )
+                .padding(.horizontal, Spacing.lg)
+            } else {
+                VStack(spacing: Spacing.sm) {
                         ForEach(classesService.classes) { classItem in
                             AdminClassCard(
                                 classItem: classItem,
@@ -132,15 +323,61 @@ struct AdminPanelView: View {
                             )
                         }
                     }
+                    .padding(.horizontal, Spacing.lg)
                 }
             }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.bottom, Spacing.xxxl)
         }
-        .background(Color.platformGroupedBackground.ignoresSafeArea())
-        .refreshable {
-            await classesService.loadOpenClasses()
+    
+    // MARK: - Helper Functions
+    
+    private func passTypeName(_ type: String) -> String {
+        switch type {
+        case "single":
+            return "Single Lesson Pass (1 lesson)"
+        case "five_pack":
+            return "5-Lesson Package (5 lessons)"
+        case "ten_pack":
+            return "10-Lesson Package (10 lessons)"
+        default:
+            return "Unknown"
         }
+    }
+    
+    private func addPassToClient() async {
+        guard let client = selectedClient else { return }
+        
+        isAddingPass = true
+        
+        do {
+            try await adminService.addPassToClient(
+                clientId: client.id,
+                passType: selectedPassType,
+                totalLessons: passQuantity
+            )
+            
+            // Show success alert
+            alertItem = AlertItem(
+                title: "Pass Added",
+                message: "Successfully added \(passQuantity) lesson\(passQuantity == 1 ? "" : "s") to \(client.firstName) \(client.lastName)'s account."
+            )
+            
+            // Reset selections
+            selectedClient = nil
+            selectedPassType = "single"
+            passQuantity = 1
+            
+            // Refresh data
+            await adminService.loadAllUsers()
+            await packagesService.loadMyPackages()
+            
+        } catch {
+            alertItem = AlertItem(
+                title: "Error",
+                message: "Failed to add pass: \(error.localizedDescription)"
+            )
+        }
+        
+        isAddingPass = false
     }
 }
 

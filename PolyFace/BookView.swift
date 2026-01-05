@@ -523,7 +523,7 @@ private struct ClassCard: View {
                         VStack(alignment: .leading, spacing: Spacing.xxs) {
                             HStack {
                                 Text(classItem.title)
-                                    .font(.headingSmall)
+                                    .font(.headingMedium)
                                     .foregroundStyle(AppTheme.textPrimary)
                                 
                                 if isRegistered {
@@ -532,7 +532,7 @@ private struct ClassCard: View {
                             }
                             
                             Text(classItem.description)
-                                .font(.bodySmall)
+                                .font(.bodyMedium)
                                 .foregroundStyle(AppTheme.textSecondary)
                                 .lineLimit(2)
                         }
@@ -554,23 +554,23 @@ private struct ClassCard: View {
                     HStack(spacing: Spacing.lg) {
                         HStack(spacing: Spacing.xxs) {
                             Image(systemName: "calendar")
-                                .font(.labelSmall)
+                                .font(.bodySmall)
                             Text(classItem.startTime.formatted(date: .abbreviated, time: .omitted))
-                                .font(.labelMedium)
+                                .font(.bodyMedium)
                         }
                         
                         HStack(spacing: Spacing.xxs) {
                             Image(systemName: "clock")
-                                .font(.labelSmall)
+                                .font(.bodySmall)
                             Text(classItem.startTime.formatted(date: .omitted, time: .shortened))
-                                .font(.labelMedium)
+                                .font(.bodyMedium)
                         }
                         
                         HStack(spacing: Spacing.xxs) {
                             Image(systemName: "mappin.circle")
-                                .font(.labelSmall)
+                                .font(.bodySmall)
                             Text(classItem.location)
-                                .font(.labelMedium)
+                                .font(.bodyMedium)
                         }
                     }
                     .foregroundStyle(AppTheme.textSecondary)

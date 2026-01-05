@@ -47,11 +47,14 @@ struct BookView: View {
     
     // Get available lesson packages (excluding class passes)
     private var availableLessonPackages: [LessonPackage] {
-        packagesService.packages.filter {
-            $0.packageType != "class_pass" &&
-            $0.lessonsRemaining > 0 &&
-            $0.expirationDate >= Date()
-        }.sorted { $0.expirationDate < $1.expirationDate }
+        let now = Date()
+        return packagesService.packages
+            .filter { pkg in
+                pkg.packageType != "class_pass" &&
+                pkg.lessonsRemaining > 0 &&
+                pkg.expirationDate >= now
+            }
+            .sorted { $0.expirationDate < $1.expirationDate }
     }
 
     var body: some View {
@@ -154,7 +157,7 @@ struct BookView: View {
 
                 CardView(padding: Spacing.md) {
                     Menu {
-                        ForEach(trainersOrdered, id: \.self) { trainer in
+                        ForEach(trainersOrdered, id: \.id) { trainer in
                             Button {
                                 selectedTrainer = trainer
                                 selectedSlot = nil
@@ -236,7 +239,7 @@ struct BookView: View {
                         )
                         .padding(.horizontal, Spacing.lg)
                     } else {
-                        ForEach(scheduleService.daySlots, id: \.self) { slot in
+                        ForEach(scheduleService.daySlots, id: \.id) { slot in
                             let isSelected = selectedSlot?.id == slot.id
                             let isBookable = canBookSlot(slot)
                             Button {
@@ -925,3 +928,4 @@ private extension View {
         }
     }
 }
+

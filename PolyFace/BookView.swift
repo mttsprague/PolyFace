@@ -219,9 +219,12 @@ struct BookView: View {
                     } else {
                         ForEach(scheduleService.daySlots, id: \.self) { slot in
                             let isSelected = selectedSlot?.id == slot.id
+                            let isBookable = canBookSlot(slot)
                             Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedSlot = slot
+                                if isBookable {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selectedSlot = slot
+                                    }
                                 }
                             } label: {
                                 HStack(spacing: Spacing.md) {
@@ -229,18 +232,24 @@ struct BookView: View {
                                         RoundedRectangle(cornerRadius: CornerRadius.xs, style: .continuous)
                                             .fill(isSelected ? AppTheme.primary.opacity(0.15) : AppTheme.primary.opacity(0.08))
                                             .frame(width: 48, height: 48)
-                                        Image(systemName: "clock")
+                                        Image(systemName: isBookable ? "clock" : "clock.badge.exclamationmark")
                                             .font(.system(size: 20, weight: .semibold))
-                                            .foregroundStyle(isSelected ? AppTheme.primary : AppTheme.textSecondary)
+                                            .foregroundStyle(isBookable ? (isSelected ? AppTheme.primary : AppTheme.textSecondary) : AppTheme.textTertiary)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: Spacing.xxs) {
                                         Text(slot.startTime.formatted(date: .omitted, time: .shortened))
                                             .font(.headingSmall)
-                                            .foregroundStyle(AppTheme.textPrimary)
-                                        Text("\(Int((slot.endTime.timeIntervalSince(slot.startTime)) / 60)) min session")
-                                            .font(.bodySmall)
-                                            .foregroundStyle(AppTheme.textSecondary)
+                                            .foregroundStyle(isBookable ? AppTheme.textPrimary : AppTheme.textTertiary)
+                                        if isBookable {
+                                            Text("\(Int((slot.endTime.timeIntervalSince(slot.startTime)) / 60)) min session")
+                                                .font(.bodySmall)
+                                                .foregroundStyle(AppTheme.textSecondary)
+                                        } else {
+                                            Text("Too close to start time")
+                                                .font(.bodySmall)
+                                                .foregroundStyle(AppTheme.textTertiary)
+                                        }
                                     }
                                     
                                     Spacer()
@@ -356,6 +365,12 @@ struct BookView: View {
         return packagesService.hasAvailableLessons
     }
     
+    private func canBookSlot(_ slot: AvailabilitySlot) -> Bool {
+        let now = Date()
+        let fiveHoursFromNow = now.addingTimeInterval(5 * 60 * 60)
+        return slot.startTime > fiveHoursFromNow
+    }
+    
     private var bookButtonText: String {
         if mode == .classes {
             return "Confirm Booking"
@@ -378,7 +393,18 @@ struct BookView: View {
 
     private func performBooking() async {
         guard let trainerId = selectedTrainer?.id,
-              let slotId = selectedSlot?.id else { return }
+              let slotId = selectedSlot?.id,
+              let slot = selectedSlot else { return }
+        
+        // Check if slot is within 5 hours
+        if !canBookSlot(slot) {
+            bookingAlert = .init(
+                title: "Booking Not Available",
+                message: "Lessons cannot be booked within 5 hours of the start time. Please contact Jeff Schmitz for assistance."
+            )
+            return
+        }
+        
         bookingInFlight = true
         defer { bookingInFlight = false }
         do {

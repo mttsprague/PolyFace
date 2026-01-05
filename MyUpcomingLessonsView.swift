@@ -61,8 +61,12 @@ struct MyUpcomingLessonsView: View {
         items.append(contentsOf: upcoming.map { .lesson($0) })
         items.append(contentsOf: upcomingClasses.map { .classItem($0) })
         return items.sorted { $0.date < $1.date }
+    }    
+    private func canCancelItem(_ item: ScheduleItem) -> Bool {
+        let now = Date()
+        let twentyFourHoursFromNow = now.addingTimeInterval(24 * 60 * 60)
+        return item.date > twentyFourHoursFromNow
     }
-
     var body: some View {
         List {
             if (bookingsService.isLoading || classesService.isLoading) && allUpcoming.isEmpty {
@@ -72,42 +76,57 @@ struct MyUpcomingLessonsView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(allUpcoming) { item in
+                    let isCancellable = canCancelItem(item)
                     switch item {
                     case .lesson(let booking):
                         LessonRow(booking: booking,
                                   trainerName: trainerName(for: booking.trainerUID),
                                   venueName: venueName,
                                   venueCityStateZip: venueCityStateZip,
+                                  isCancellable: isCancellable,
                                   onCancel: {
-                                      itemToCancel = item
-                                      showCancelAlert = true
+                                      if isCancellable {
+                                          itemToCancel = item
+                                          showCancelAlert = true
+                                      } else {
+                                          cancelError = "Lessons cannot be cancelled within 24 hours of the start time."
+                                      }
                                   })
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    itemToCancel = item
-                                    showCancelAlert = true
-                                } label: {
-                                    Label("Cancel", systemImage: "xmark.circle")
+                                if isCancellable {
+                                    Button(role: .destructive) {
+                                        itemToCancel = item
+                                        showCancelAlert = true
+                                    } label: {
+                                        Label("Cancel", systemImage: "xmark.circle")
+                                    }
                                 }
                             }
                     case .classItem(let classItem):
                         ClassRow(classItem: classItem,
                                  trainerName: trainerName(for: classItem.trainerId),
                                  venueName: venueName,
+                                 isCancellable: isCancellable,
                                  onCancel: {
-                                     itemToCancel = item
-                                     showCancelAlert = true
-                                 })
+                                      if isCancellable {
+                                          itemToCancel = item
+                                          showCancelAlert = true
+                                      } else {
+                                          cancelError = "Classes cannot be cancelled within 24 hours of the start time."
+                                      }
+                                  })
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    itemToCancel = item
-                                    showCancelAlert = true
-                                } label: {
-                                    Label("Cancel", systemImage: "xmark.circle")
+                                if isCancellable {
+                                    Button(role: .destructive) {
+                                        itemToCancel = item
+                                        showCancelAlert = true
+                                    } label: {
+                                        Label("Cancel", systemImage: "xmark.circle")
+                                    }
                                 }
                             }
                     }
@@ -212,6 +231,7 @@ private struct LessonRow: View {
     let trainerName: String
     let venueName: String
     let venueCityStateZip: String
+    let isCancellable: Bool
     let onCancel: () -> Void
 
     var body: some View {
@@ -257,9 +277,9 @@ private struct LessonRow: View {
             Spacer()
             
             Button(action: onCancel) {
-                Image(systemName: "xmark.circle.fill")
+                Image(systemName: isCancellable ? "xmark.circle.fill" : "lock.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(isCancellable ? .red : .gray)
             }
             .buttonStyle(.plain)
         }
@@ -275,6 +295,7 @@ private struct ClassRow: View {
     let classItem: GroupClass
     let trainerName: String
     let venueName: String
+    let isCancellable: Bool
     let onCancel: () -> Void
 
     var body: some View {
@@ -310,9 +331,9 @@ private struct ClassRow: View {
             Spacer()
             
             Button(action: onCancel) {
-                Image(systemName: "xmark.circle.fill")
+                Image(systemName: isCancellable ? "xmark.circle.fill" : "lock.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(isCancellable ? .red : .gray)
             }
             .buttonStyle(.plain)
         }

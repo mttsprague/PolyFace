@@ -238,5 +238,6 @@ struct MorePlaceholderView: View {
             .background(Color.platformGroupedBackground.ignoresSafeArea())
             .navigationBarHidden(true)
         }
+        .navigationViewStyle(.stack)
     }
 }

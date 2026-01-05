@@ -89,6 +89,7 @@ struct BookView: View {
                 )
             }
         }
+        .navigationViewStyle(.stack)
         .task {
             if trainersService.trainers.isEmpty {
                 await trainersService.loadAll()

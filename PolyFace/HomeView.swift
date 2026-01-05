@@ -146,6 +146,7 @@ struct HomeView: View {
             .navigationBarHidden(true)
             #endif
         }
+        .navigationViewStyle(.stack)
         .task {
             // Keep user info fresh if signed in; do not load schedule here.
             if isAuthenticated {

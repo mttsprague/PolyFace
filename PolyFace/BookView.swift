@@ -48,13 +48,16 @@ struct BookView: View {
     // Get available lesson packages (excluding class passes)
     private var availableLessonPackages: [LessonPackage] {
         let now = Date()
-        return packagesService.packages
-            .filter { pkg in
-                pkg.packageType != "class_pass" &&
-                pkg.lessonsRemaining > 0 &&
-                pkg.expirationDate >= now
-            }
-            .sorted { $0.expirationDate < $1.expirationDate }
+        let filtered = packagesService.packages.filter { pkg -> Bool in
+            let isNotClassPass = pkg.packageType != "class_pass"
+            let hasRemaining = pkg.lessonsRemaining > 0
+            let notExpired = pkg.expirationDate >= now
+            return isNotClassPass && hasRemaining && notExpired
+        }
+        let sorted = filtered.sorted { (a, b) -> Bool in
+            return a.expirationDate < b.expirationDate
+        }
+        return sorted
     }
 
     var body: some View {

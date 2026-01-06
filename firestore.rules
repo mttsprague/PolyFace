@@ -76,8 +76,9 @@ service cloud.firestore {
         return [
           'emailAddress', 'firstName', 'lastName', 'athleteFirstName',
           'athleteLastName', 'athlete2FirstName', 'athlete2LastName',
-          'athletePosition', 'athlete2Position', 'notesForCoach',
-          'phoneNumber', 'photoURL', 'createdAt',
+          'athlete3FirstName', 'athlete3LastName',
+          'athletePosition', 'athlete2Position', 'athlete3Position', 
+          'notesForCoach', 'phoneNumber', 'photoURL', 'createdAt',
           'updatedAt', 'active', 'isAdmin', 'stripeCustomerId'
         ];
       }
@@ -122,8 +123,11 @@ service cloud.firestore {
                && isStringIfPresent('athleteLastName')
                && isStringIfPresent('athlete2FirstName')
                && isStringIfPresent('athlete2LastName')
+               && isStringIfPresent('athlete3FirstName')
+               && isStringIfPresent('athlete3LastName')
                && isStringIfPresent('athletePosition')
                && isStringIfPresent('athlete2Position')
+               && isStringIfPresent('athlete3Position')
                && isStringIfPresent('notesForCoach')
                && isStringIfPresent('phoneNumber')
                && isStringIfPresent('photoURL')
@@ -149,8 +153,11 @@ service cloud.firestore {
                && isStringIfPresent('athleteLastName')
                && isStringIfPresent('athlete2FirstName')
                && isStringIfPresent('athlete2LastName')
+               && isStringIfPresent('athlete3FirstName')
+               && isStringIfPresent('athlete3LastName')
                && isStringIfPresent('athletePosition')
                && isStringIfPresent('athlete2Position')
+               && isStringIfPresent('athlete3Position')
                && isStringIfPresent('notesForCoach')
                && isStringIfPresent('phoneNumber')
                && isStringIfPresent('photoURL')

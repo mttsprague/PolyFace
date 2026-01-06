@@ -16,10 +16,16 @@ final class AuthManager: ObservableObject {
     func signIn(email: String, password: String) async -> Bool {
         authError = nil // Clear any stale errors before starting
         do {
-            _ = try await Auth.auth().signIn(withEmail: email, password: password)
+            let result = try await Auth.auth().signIn(withEmail: email, password: password)
+            
+            // Force refresh the ID token to ensure we have the latest auth state
+            _ = try await result.user.getIDTokenResult(forcingRefresh: true)
+            
+            print("AuthManager: Successfully signed in with UID: \(result.user.uid)")
             authError = nil
             return true
         } catch {
+            print("AuthManager: Sign-in error: \(error.localizedDescription)")
             authError = error.localizedDescription
             return false
         }

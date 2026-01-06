@@ -19,18 +19,28 @@ final class UsersService: ObservableObject {
 
     func loadCurrentUserIfAvailable() async {
         guard let uid = Auth.auth().currentUser?.uid else {
+            print("UsersService: No authenticated user")
             currentUser = nil
             return
         }
+        
+        print("UsersService: Loading profile for UID: \(uid)")
         do {
             let snapshot = try await db.collection("users").document(uid).getDocument()
             if snapshot.exists, let data = snapshot.data() {
+                print("UsersService: ✅ User document found")
                 currentUser = decodeUserProfile(id: snapshot.documentID, data: data)
             } else {
+                print("UsersService: ❌ User document does NOT exist for UID: \(uid)")
+                print("UsersService: This usually means the Firebase Auth UID doesn't match any Firestore user document.")
+                print("UsersService: Automatically signing out to clear cached auth token...")
                 currentUser = nil
+                
+                // Force sign out to clear the cached auth token
+                try? Auth.auth().signOut()
             }
         } catch {
-            print("UsersService: failed to load user profile: \(error)")
+            print("UsersService: ❌ Error loading user profile: \(error)")
             currentUser = nil
         }
     }

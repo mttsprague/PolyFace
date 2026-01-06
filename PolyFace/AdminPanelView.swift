@@ -69,6 +69,7 @@ struct AdminPanelView: View {
                 Alert(title: Text(item.title), message: Text(item.message))
             }
         }
+        .navigationViewStyle(.stack)
         .task {
             await adminService.checkAdminStatus()
             if adminService.isAdmin {
@@ -579,6 +580,7 @@ struct CreateClassView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
     
     private func createClass() async {

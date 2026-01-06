@@ -215,5 +215,6 @@ struct EditProfileView_Previews: PreviewProvider {
         NavigationView {
             EditProfileView()
         }
+        .navigationViewStyle(.stack)
     }
 }

@@ -44,8 +44,9 @@ service cloud.firestore {
       // Trainers can read bookings for their own trainer ID
       allow read: if isTrainer() && request.auth.uid == resource.data.trainerId;
 
-      // Admins can create, update, and delete any booking
-      allow create, update, delete: if isAdmin();
+      // Admins and trainers can create, update, and delete bookings
+      // Trainers need this for admin booking feature in PolyCal
+      allow create, update, delete: if isAdmin() || isTrainer();
     }
 
     // =========================

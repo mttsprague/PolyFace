@@ -706,6 +706,10 @@ private struct SignInForm: View {
 private struct RegisterForm: View {
     @EnvironmentObject var auth: AuthManager
 
+    @State private var showingWaiver = false
+    @State private var waiverSignature: WaiverSignature?
+    @State private var isRegistering = false
+    
     @State private var email = ""
     @State private var password = ""
     @State private var confirm = ""
@@ -797,44 +801,33 @@ private struct RegisterForm: View {
                 .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
 
             Button {
-                Task {
-                    // Validate required fields
-                    guard !email.isEmpty, 
-                          !password.isEmpty, 
-                          password == confirm,
-                          !firstName.isEmpty,
-                          !lastName.isEmpty,
-                          !athleteFirstName.isEmpty,
-                          !athleteLastName.isEmpty,
-                          !athletePosition.isEmpty,
-                          !phoneNumber.isEmpty else { return }
-                    
-                    _ = await auth.register(
-                        email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                        password: password,
-                        firstName: firstName.isEmpty ? nil : firstName,
-                        lastName: lastName.isEmpty ? nil : lastName,
-                        athleteFirstName: athleteFirstName.isEmpty ? nil : athleteFirstName,
-                        athleteLastName: athleteLastName.isEmpty ? nil : athleteLastName,
-                        athlete2FirstName: athlete2FirstName.isEmpty ? nil : athlete2FirstName,
-                        athlete2LastName: athlete2LastName.isEmpty ? nil : athlete2LastName,
-                        athlete3FirstName: athlete3FirstName.isEmpty ? nil : athlete3FirstName,
-                        athlete3LastName: athlete3LastName.isEmpty ? nil : athlete3LastName,
-                        athletePosition: athletePosition.isEmpty ? nil : athletePosition,
-                        athlete2Position: athlete2Position.isEmpty ? nil : athlete2Position,
-                        athlete3Position: athlete3Position.isEmpty ? nil : athlete3Position,
-                        notesForCoach: notesForCoach.isEmpty ? nil : notesForCoach,
-                        phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber
-                    )
-                }
+                // Validate required fields before showing waiver
+                guard !email.isEmpty, 
+                      !password.isEmpty, 
+                      password == confirm,
+                      !firstName.isEmpty,
+                      !lastName.isEmpty,
+                      !athleteFirstName.isEmpty,
+                      !athleteLastName.isEmpty,
+                      !athletePosition.isEmpty,
+                      !phoneNumber.isEmpty else { return }
+                
+                // Show waiver first
+                showingWaiver = true
             } label: {
-                Text("Create Account")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Brand.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                HStack(spacing: 8) {
+                    if isRegistering {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    }
+                    Text(isRegistering ? "Creating Account..." : "Review Waiver & Register")
+                }
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Brand.primary)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .disabled(
                 email.isEmpty || 
@@ -845,11 +838,71 @@ private struct RegisterForm: View {
                 athleteFirstName.isEmpty ||
                 athleteLastName.isEmpty ||
                 athletePosition.isEmpty ||
-                phoneNumber.isEmpty
+                phoneNumber.isEmpty ||
+                isRegistering
             )
             .padding(.horizontal)
         }
         .padding(.horizontal)
+        .sheet(isPresented: $showingWaiver) {
+            WaiverAgreementView { signature in
+                // Waiver signed - now create the account
+                waiverSignature = signature
+                showingWaiver = false
+                
+                Task {
+                    await registerWithWaiver(signature: signature)
+                }
+            }
+        }
+    }
+    
+    private func registerWithWaiver(signature: WaiverSignature) async {
+        isRegistering = true
+        defer { isRegistering = false }
+        
+        // Step 1: Create Firebase Auth account
+        let success = await auth.register(
+            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+            password: password,
+            firstName: firstName.isEmpty ? nil : firstName,
+            lastName: lastName.isEmpty ? nil : lastName,
+            athleteFirstName: athleteFirstName.isEmpty ? nil : athleteFirstName,
+            athleteLastName: athleteLastName.isEmpty ? nil : athleteLastName,
+            athlete2FirstName: athlete2FirstName.isEmpty ? nil : athlete2FirstName,
+            athlete2LastName: athlete2LastName.isEmpty ? nil : athlete2LastName,
+            athlete3FirstName: athlete3FirstName.isEmpty ? nil : athlete3FirstName,
+            athlete3LastName: athlete3LastName.isEmpty ? nil : athlete3LastName,
+            athletePosition: athletePosition.isEmpty ? nil : athletePosition,
+            athlete2Position: athlete2Position.isEmpty ? nil : athlete2Position,
+            athlete3Position: athlete3Position.isEmpty ? nil : athlete3Position,
+            notesForCoach: notesForCoach.isEmpty ? nil : notesForCoach,
+            phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber
+        )
+        
+        guard success, let userId = Auth.auth().currentUser?.uid else {
+            print("❌ Registration failed")
+            return
+        }
+        
+        // Step 2: Generate and upload waiver PDF
+        do {
+            guard let pdfData = WaiverPDFGenerator.generateWaiverPDF(signature: signature) else {
+                print("❌ Failed to generate waiver PDF")
+                return
+            }
+            
+            print("📄 Uploading waiver for user: \(userId)")
+            _ = try await DocumentsService.shared.saveWaiverDocument(
+                userId: userId,
+                pdfData: pdfData,
+                signature: signature
+            )
+            print("✅ Waiver uploaded and saved successfully")
+        } catch {
+            print("❌ Error saving waiver: \(error.localizedDescription)")
+            // Account is created but waiver failed - they can re-sign later if needed
+        }
     }
 }
 

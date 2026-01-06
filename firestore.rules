@@ -215,6 +215,53 @@ service cloud.firestore {
       }
 
       // =========================
+      // Documents subcollection
+      // users/{userId}/documents/{documentId}
+      // Stores user documents like waivers, medical forms, etc.
+      // =========================
+      match /documents/{documentId} {
+        // Owner or admin can read their documents
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+        // Owner or admin can create documents
+        // Waivers are created during registration
+        allow create: if isSignedIn() 
+                      && (request.auth.uid == userId || isAdmin())
+                      && isValidDocumentCreate();
+
+        // Only admins can update/delete documents
+        allow update, delete: if isAdmin();
+
+        function isValidDocumentCreate() {
+          // Required fields for document metadata
+          let allowed = ['name', 'type', 'uploadedAt', 'url', 'signedBy', 'signatoryEmail', 'isMinor'];
+          let hasAllowed = request.resource.data.keys().hasOnly(allowed);
+
+          let nameOk = request.resource.data.name is string;
+          let typeOk = request.resource.data.type is string;
+          let uploadedAtOk = request.resource.data.uploadedAt is timestamp;
+          let urlOk = request.resource.data.url is string;
+
+          // Optional fields
+          let signedByOk = !('signedBy' in request.resource.data) 
+                           || (request.resource.data.signedBy is string);
+          let signatoryEmailOk = !('signatoryEmail' in request.resource.data) 
+                                 || (request.resource.data.signatoryEmail is string);
+          let isMinorOk = !('isMinor' in request.resource.data) 
+                          || (request.resource.data.isMinor is bool);
+
+          return hasAllowed
+                 && nameOk
+                 && typeOk
+                 && uploadedAtOk
+                 && urlOk
+                 && signedByOk
+                 && signatoryEmailOk
+                 && isMinorOk;
+        }
+      }
+
+      // =========================
       // Bookings subcollection for users
       // users/{userId}/bookings/{bookingId}
       // Allows authenticated users to read their own bookings stored as a subcollection.

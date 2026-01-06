@@ -726,124 +726,271 @@ private struct RegisterForm: View {
     @State private var athlete3Position = ""
     @State private var notesForCoach = ""
     @State private var phoneNumber = ""
+    
+    private var passwordsMatch: Bool {
+        password == confirm && !password.isEmpty
+    }
+    
+    private var canSubmit: Bool {
+        !email.isEmpty &&
+        !password.isEmpty &&
+        passwordsMatch &&
+        !firstName.isEmpty &&
+        !lastName.isEmpty &&
+        !athleteFirstName.isEmpty &&
+        !athleteLastName.isEmpty &&
+        !athletePosition.isEmpty &&
+        !phoneNumber.isEmpty &&
+        !isRegistering
+    }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Group {
-                TextField("Email", text: $email)
-                    #if os(iOS)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    #endif
-
-                SecureField("Password", text: $password)
-                    #if os(iOS)
-                    .textContentType(.newPassword)
-                    #endif
-
-                SecureField("Confirm Password", text: $confirm)
-                    #if os(iOS)
-                    .textContentType(.newPassword)
-                    #endif
-            }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
-
-            HStack(spacing: 12) {
-                TextField("First Name", text: $firstName)
-                TextField("Last Name", text: $lastName)
-            }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
-
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    TextField("Athlete First Name", text: $athleteFirstName)
-                    TextField("Athlete Last Name", text: $athleteLastName)
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "volleyball.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(Brand.primary)
+                        .padding(.top, 20)
+                    
+                    Text("Create Your Account")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.primary)
+                    
+                    Text("Join Polyface Volleyball Academy")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                TextField("Position", text: $athletePosition)
-            }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
-
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    TextField("Athlete 2 First (Optional)", text: $athlete2FirstName)
-                    TextField("Athlete 2 Last (Optional)", text: $athlete2LastName)
-                }
-                TextField("Position (Optional)", text: $athlete2Position)
-            }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
-
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    TextField("Athlete 3 First (Optional)", text: $athlete3FirstName)
-                    TextField("Athlete 3 Last (Optional)", text: $athlete3LastName)
-                }
-                TextField("Position (Optional)", text: $athlete3Position)
-            }
-            .padding()
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
-
-            TextField("Phone Number", text: $phoneNumber)
-                #if os(iOS)
-                .keyboardType(.phonePad)
-                #endif
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
-
-            TextField("Notes for Coach (Optional)", text: $notesForCoach, axis: .vertical)
-                .lineLimit(3...6)
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
-
-            Button {
-                // Validate required fields before showing waiver
-                guard !email.isEmpty, 
-                      !password.isEmpty, 
-                      password == confirm,
-                      !firstName.isEmpty,
-                      !lastName.isEmpty,
-                      !athleteFirstName.isEmpty,
-                      !athleteLastName.isEmpty,
-                      !athletePosition.isEmpty,
-                      !phoneNumber.isEmpty else { return }
+                .padding(.bottom, 8)
                 
-                // Show waiver first
-                showingWaiver = true
-            } label: {
-                HStack(spacing: 8) {
-                    if isRegistering {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                // Account Credentials Section
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionHeader(icon: "lock.shield.fill", title: "Account Credentials")
+                    
+                    VStack(spacing: 12) {
+                        FormField(
+                            icon: "envelope.fill",
+                            placeholder: "Email Address",
+                            text: $email,
+                            keyboardType: .emailAddress,
+                            textContentType: .emailAddress,
+                            autocapitalization: .never
+                        )
+                        
+                        FormField(
+                            icon: "lock.fill",
+                            placeholder: "Password",
+                            text: $password,
+                            isSecure: true,
+                            textContentType: .newPassword
+                        )
+                        
+                        FormField(
+                            icon: "lock.fill",
+                            placeholder: "Confirm Password",
+                            text: $confirm,
+                            isSecure: true,
+                            textContentType: .newPassword,
+                            validationIcon: password.isEmpty ? nil : (passwordsMatch ? "checkmark.circle.fill" : "xmark.circle.fill"),
+                            validationColor: passwordsMatch ? .green : .red
+                        )
                     }
-                    Text(isRegistering ? "Creating Account..." : "Review Waiver & Register")
                 }
-                .font(.headline)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Brand.primary)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.horizontal)
+                
+                // Parent/Guardian Information Section
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionHeader(icon: "person.fill", title: "Parent/Guardian Information")
+                    
+                    HStack(spacing: 12) {
+                        FormField(
+                            icon: "person.circle.fill",
+                            placeholder: "First Name",
+                            text: $firstName,
+                            textContentType: .givenName
+                        )
+                        
+                        FormField(
+                            icon: "person.circle.fill",
+                            placeholder: "Last Name",
+                            text: $lastName,
+                            textContentType: .familyName
+                        )
+                    }
+                    
+                    FormField(
+                        icon: "phone.fill",
+                        placeholder: "Phone Number",
+                        text: $phoneNumber,
+                        keyboardType: .phonePad,
+                        textContentType: .telephoneNumber
+                    )
+                }
+                .padding(.horizontal)
+                
+                // Primary Athlete Section
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionHeader(icon: "figure.volleyball", title: "Primary Athlete")
+                    
+                    HStack(spacing: 12) {
+                        FormField(
+                            icon: "sportscourt.fill",
+                            placeholder: "First Name",
+                            text: $athleteFirstName,
+                            textContentType: .givenName
+                        )
+                        
+                        FormField(
+                            icon: "sportscourt.fill",
+                            placeholder: "Last Name",
+                            text: $athleteLastName,
+                            textContentType: .familyName
+                        )
+                    }
+                    
+                    FormField(
+                        icon: "star.fill",
+                        placeholder: "Position (e.g., Setter, Outside Hitter)",
+                        text: $athletePosition
+                    )
+                }
+                .padding(.horizontal)
+                
+                // Additional Athletes Section
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionHeader(
+                        icon: "person.2.fill",
+                        title: "Additional Athletes",
+                        subtitle: "Optional"
+                    )
+                    
+                    // Athlete 2
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            FormField(
+                                icon: "sportscourt",
+                                placeholder: "Athlete 2 First Name",
+                                text: $athlete2FirstName,
+                                textContentType: .givenName
+                            )
+                            
+                            FormField(
+                                icon: "sportscourt",
+                                placeholder: "Last Name",
+                                text: $athlete2LastName,
+                                textContentType: .familyName
+                            )
+                        }
+                        
+                        if !athlete2FirstName.isEmpty || !athlete2LastName.isEmpty {
+                            FormField(
+                                icon: "star",
+                                placeholder: "Position",
+                                text: $athlete2Position
+                            )
+                        }
+                    }
+                    
+                    // Athlete 3
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            FormField(
+                                icon: "sportscourt",
+                                placeholder: "Athlete 3 First Name",
+                                text: $athlete3FirstName,
+                                textContentType: .givenName
+                            )
+                            
+                            FormField(
+                                icon: "sportscourt",
+                                placeholder: "Last Name",
+                                text: $athlete3LastName,
+                                textContentType: .familyName
+                            )
+                        }
+                        
+                        if !athlete3FirstName.isEmpty || !athlete3LastName.isEmpty {
+                            FormField(
+                                icon: "star",
+                                placeholder: "Position",
+                                text: $athlete3Position
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                
+                // Notes Section
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionHeader(
+                        icon: "note.text",
+                        title: "Notes for Coach",
+                        subtitle: "Optional"
+                    )
+                    
+                    TextEditor(text: $notesForCoach)
+                        .frame(height: 100)
+                        .padding(12)
+                        .background(Color(UIColor.systemGray6))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            Group {
+                                if notesForCoach.isEmpty {
+                                    Text("Share any goals, experience level, or special considerations...")
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 20)
+                                        .allowsHitTesting(false)
+                                }
+                            },
+                            alignment: .topLeading
+                        )
+                }
+                .padding(.horizontal)
+                
+                // Submit Button
+                Button {
+                    guard canSubmit else { return }
+                    showingWaiver = true
+                } label: {
+                    HStack(spacing: 12) {
+                        if isRegistering {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.title3)
+                        }
+                        Text(isRegistering ? "Creating Account..." : "Review Waiver & Complete Registration")
+                            .font(.headline)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: canSubmit ? [Brand.primary, Brand.primary.opacity(0.8)] : [Color.gray, Color.gray.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: canSubmit ? Brand.primary.opacity(0.3) : Color.clear, radius: 8, y: 4)
+                }
+                .disabled(!canSubmit)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                
+                // Privacy Note
+                Text("By registering, you'll review and sign our liability waiver")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 32)
             }
-            .disabled(
-                email.isEmpty || 
-                password.isEmpty || 
-                password != confirm ||
-                firstName.isEmpty ||
-                lastName.isEmpty ||
-                athleteFirstName.isEmpty ||
-                athleteLastName.isEmpty ||
-                athletePosition.isEmpty ||
-                phoneNumber.isEmpty ||
-                isRegistering
-            )
-            .padding(.horizontal)
         }
-        .padding(.horizontal)
         .sheet(isPresented: $showingWaiver) {
             WaiverAgreementView { signature in
                 // Waiver signed - now create the account
@@ -984,3 +1131,78 @@ private struct PaymentMethodCard: View {
     }
 }
 
+// MARK: - Registration Form Components
+
+private struct SectionHeader: View {
+    let icon: String
+    let title: String
+    var subtitle: String? = nil
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(Brand.primary)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .fill(Brand.primary.opacity(0.1))
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            
+            Spacer()
+        }
+    }
+}
+
+private struct FormField: View {
+    let icon: String
+    let placeholder: String
+    @Binding var text: String
+    var isSecure: Bool = false
+    var keyboardType: UIKeyboardType = .default
+    var textContentType: UITextContentType? = nil
+    var autocapitalization: TextInputAutocapitalization = .words
+    var validationIcon: String? = nil
+    var validationColor: Color? = nil
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(Brand.primary)
+                .frame(width: 20)
+            
+            if isSecure {
+                SecureField(placeholder, text: $text)
+                    .textContentType(textContentType)
+            } else {
+                TextField(placeholder, text: $text)
+                    .keyboardType(keyboardType)
+                    .textContentType(textContentType)
+                    .textInputAutocapitalization(autocapitalization)
+                    .autocorrectionDisabled(autocapitalization == .never)
+            }
+            
+            if let validationIcon = validationIcon {
+                Image(systemName: validationIcon)
+                    .foregroundStyle(validationColor ?? .secondary)
+                    .font(.body)
+            }
+        }
+        .padding(16)
+        .background(Color(UIColor.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}

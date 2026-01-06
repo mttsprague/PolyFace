@@ -46,7 +46,7 @@ final class DocumentsService {
         metadata.contentType = "application/pdf"
         
         print("📄 Uploading waiver PDF to: \(storagePath)")
-        _ = try await storageRef.putDataAsync(data: pdfData, metadata: metadata)
+        _ = try await storageRef.putDataAsync(pdfData, metadata: metadata)
         
         // Get download URL
         let downloadURL = try await storageRef.downloadURL()

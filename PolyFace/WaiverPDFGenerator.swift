@@ -64,12 +64,7 @@ struct WaiverPDFGenerator {
             context.cgContext.strokePath()
             currentY += 20
             
-            // Body text attributes
-            let bodyAttributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 11),
-                .foregroundColor: UIColor.black
-            ]
-            
+            // Paragraph style and body attributes
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineSpacing = 4
             paragraphStyle.alignment = .justified

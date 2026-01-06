@@ -44,9 +44,9 @@ service cloud.firestore {
       // Trainers can read bookings for their own trainer ID
       allow read: if isTrainer() && request.auth.uid == resource.data.trainerId;
 
-      // Admins and trainers can create, update, and delete bookings
-      // Trainers need this for admin booking feature in PolyCal
-      allow create, update, delete: if isAdmin() || isTrainer();
+      // Only admins can create, update, and delete bookings
+      // This includes the admin booking feature in PolyCal
+      allow create, update, delete: if isAdmin();
     }
 
     // =========================
@@ -168,7 +168,7 @@ service cloud.firestore {
       // =========================
       match /lessonPackages/{packageId} {
         // Owner (or admin or trainer) can read their packages
-        // Trainers need to read packages to book lessons for clients
+        // Trainers need to read packages but only admins can book lessons
         allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isTrainer());
 
         // Owner can create a package at purchase time; validate shape/values.
@@ -178,10 +178,8 @@ service cloud.firestore {
                       && (request.auth.uid == userId || isAdmin())
                       && isValidLessonPackageCreate();
 
-        // Admins can update/delete packages (for admin booking decrements)
-        // Trainers can also update to decrement lessonsUsed when booking
-        allow update: if isAdmin() || isTrainer();
-        allow delete: if isAdmin();
+        // Only admins can update/delete packages (for admin booking)
+        allow update, delete: if isAdmin();
 
         function isValidLessonPackageCreate() {
           // Allowed fields on create (transactionId is optional)

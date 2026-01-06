@@ -891,10 +891,10 @@ private struct ClassRegistrationSheet: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
         .task {
             isAlreadyRegistered = await classesService.isRegistered(for: classItem.id ?? "")
             // Load packages to check for class passes
-        .navigationViewStyle(.stack)
             if packagesService.packages.isEmpty {
                 await packagesService.loadMyPackages()
             }
@@ -957,4 +957,3 @@ private extension View {
         }
     }
 }
-

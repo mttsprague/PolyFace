@@ -110,7 +110,7 @@ final class ClassesService: ObservableObject {
         
         let classRef = db.collection("classes").document(classId)
         
-        try await db.runTransaction { transaction, errorPointer in
+        _ = try await db.runTransaction { transaction, errorPointer in
             let classDoc: DocumentSnapshot
             do {
                 try classDoc = transaction.getDocument(classRef)

@@ -775,7 +775,8 @@ private struct RegisterForm: View {
                             text: $email,
                             keyboardType: .emailAddress,
                             textContentType: .emailAddress,
-                            autocapitalization: .never
+                            autocapitalization: .never,
+                            disableAutocorrection: true
                         )
                         
                         FormField(
@@ -824,7 +825,8 @@ private struct RegisterForm: View {
                         placeholder: "Phone Number",
                         text: $phoneNumber,
                         keyboardType: .phonePad,
-                        textContentType: .telephoneNumber
+                        textContentType: .telephoneNumber,
+                        disableAutocorrection: true
                     )
                 }
                 .padding(.horizontal)
@@ -1174,6 +1176,7 @@ private struct FormField: View {
     var keyboardType: UIKeyboardType = .default
     var textContentType: UITextContentType? = nil
     var autocapitalization: TextInputAutocapitalization = .words
+    var disableAutocorrection: Bool = false
     var validationIcon: String? = nil
     var validationColor: Color? = nil
     
@@ -1192,7 +1195,7 @@ private struct FormField: View {
                     .keyboardType(keyboardType)
                     .textContentType(textContentType)
                     .textInputAutocapitalization(autocapitalization)
-                    .autocorrectionDisabled(autocapitalization == .never)
+                    .autocorrectionDisabled(disableAutocorrection)
             }
             
             if let validationIcon = validationIcon {

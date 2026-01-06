@@ -44,9 +44,8 @@ service cloud.firestore {
       // Trainers can read bookings for their own trainer ID
       allow read: if isTrainer() && request.auth.uid == resource.data.trainerId;
 
-      // Add create, update, delete rules here if clients or admins manage these directly.
-      // For example, an admin might be able to create/update/delete any booking:
-      // allow create, update, delete: if isAdmin();
+      // Admins can create, update, and delete any booking
+      allow create, update, delete: if isAdmin();
     }
 
     // =========================

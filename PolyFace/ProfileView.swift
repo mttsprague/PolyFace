@@ -798,7 +798,17 @@ private struct RegisterForm: View {
 
             Button {
                 Task {
-                    guard !email.isEmpty, !password.isEmpty, password == confirm else { return }
+                    // Validate required fields
+                    guard !email.isEmpty, 
+                          !password.isEmpty, 
+                          password == confirm,
+                          !firstName.isEmpty,
+                          !lastName.isEmpty,
+                          !athleteFirstName.isEmpty,
+                          !athleteLastName.isEmpty,
+                          !athletePosition.isEmpty,
+                          !phoneNumber.isEmpty else { return }
+                    
                     _ = await auth.register(
                         email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                         password: password,
@@ -826,7 +836,17 @@ private struct RegisterForm: View {
                     .background(Brand.primary)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .disabled(email.isEmpty || password.isEmpty || password != confirm)
+            .disabled(
+                email.isEmpty || 
+                password.isEmpty || 
+                password != confirm ||
+                firstName.isEmpty ||
+                lastName.isEmpty ||
+                athleteFirstName.isEmpty ||
+                athleteLastName.isEmpty ||
+                athletePosition.isEmpty ||
+                phoneNumber.isEmpty
+            )
             .padding(.horizontal)
         }
         .padding(.horizontal)

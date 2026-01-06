@@ -166,8 +166,9 @@ service cloud.firestore {
       // users/{userId}/lessonPackages/{packageId}
       // =========================
       match /lessonPackages/{packageId} {
-        // Owner (or admin) can read their packages
-        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        // Owner (or admin or trainer) can read their packages
+        // Trainers need to read packages to book lessons for clients
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isTrainer());
 
         // Owner can create a package at purchase time; validate shape/values.
         // Admins can also create packages for users (to manually add passes).
@@ -176,9 +177,10 @@ service cloud.firestore {
                       && (request.auth.uid == userId || isAdmin())
                       && isValidLessonPackageCreate();
 
-        // Block client-side updates/deletes; booking decrements should be done
-        // by Cloud Function via Admin SDK (bypasses rules).
-        allow update, delete: if isAdmin();
+        // Admins can update/delete packages (for admin booking decrements)
+        // Trainers can also update to decrement lessonsUsed when booking
+        allow update: if isAdmin() || isTrainer();
+        allow delete: if isAdmin();
 
         function isValidLessonPackageCreate() {
           // Allowed fields on create (transactionId is optional)

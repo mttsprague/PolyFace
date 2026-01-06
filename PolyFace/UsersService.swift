@@ -45,8 +45,11 @@ final class UsersService: ObservableObject {
             athleteLastName: data["athleteLastName"] as? String,
             athlete2FirstName: data["athlete2FirstName"] as? String,
             athlete2LastName: data["athlete2LastName"] as? String,
+            athlete3FirstName: data["athlete3FirstName"] as? String,
+            athlete3LastName: data["athlete3LastName"] as? String,
             athletePosition: data["athletePosition"] as? String,
             athlete2Position: data["athlete2Position"] as? String,
+            athlete3Position: data["athlete3Position"] as? String,
             notesForCoach: data["notesForCoach"] as? String,
             phoneNumber: data["phoneNumber"] as? String,
             photoURL: data["photoURL"] as? String,
@@ -76,8 +79,11 @@ final class UsersService: ObservableObject {
         athleteLastName: String,
         athlete2FirstName: String?,
         athlete2LastName: String?,
+        athlete3FirstName: String?,
+        athlete3LastName: String?,
         athletePosition: String?,
         athlete2Position: String?,
+        athlete3Position: String?,
         notesForCoach: String?,
         emailAddress: String,
         phoneNumber: String?
@@ -102,11 +108,20 @@ final class UsersService: ObservableObject {
         if let athlete2LastName = athlete2LastName {
             updateData["athlete2LastName"] = athlete2LastName
         }
+        if let athlete3FirstName = athlete3FirstName {
+            updateData["athlete3FirstName"] = athlete3FirstName
+        }
+        if let athlete3LastName = athlete3LastName {
+            updateData["athlete3LastName"] = athlete3LastName
+        }
         if let athletePosition = athletePosition {
             updateData["athletePosition"] = athletePosition
         }
         if let athlete2Position = athlete2Position {
             updateData["athlete2Position"] = athlete2Position
+        }
+        if let athlete3Position = athlete3Position {
+            updateData["athlete3Position"] = athlete3Position
         }
         if let notesForCoach = notesForCoach {
             updateData["notesForCoach"] = notesForCoach

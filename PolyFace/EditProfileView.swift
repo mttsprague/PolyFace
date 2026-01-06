@@ -10,8 +10,11 @@ struct EditProfileView: View {
     @State private var athleteLastName: String = ""
     @State private var athlete2FirstName: String = ""
     @State private var athlete2LastName: String = ""
+    @State private var athlete3FirstName: String = ""
+    @State private var athlete3LastName: String = ""
     @State private var athletePosition: String = ""
     @State private var athlete2Position: String = ""
+    @State private var athlete3Position: String = ""
     @State private var notesForCoach: String = ""
     @State private var emailAddress: String = ""
     @State private var phoneNumber: String = ""
@@ -50,6 +53,15 @@ struct EditProfileView: View {
                 TextField("Last Name", text: $athlete2LastName)
                     .autocapitalization(.words)
                 TextField("Position", text: $athlete2Position)
+                    .autocapitalization(.words)
+            }
+            
+            Section(header: Text("Third Athlete (Optional)")) {
+                TextField("First Name", text: $athlete3FirstName)
+                    .autocapitalization(.words)
+                TextField("Last Name", text: $athlete3LastName)
+                    .autocapitalization(.words)
+                TextField("Position", text: $athlete3Position)
                     .autocapitalization(.words)
             }
             
@@ -117,8 +129,11 @@ struct EditProfileView: View {
         athleteLastName = profile.athleteLastName ?? ""
         athlete2FirstName = profile.athlete2FirstName ?? ""
         athlete2LastName = profile.athlete2LastName ?? ""
+        athlete3FirstName = profile.athlete3FirstName ?? ""
+        athlete3LastName = profile.athlete3LastName ?? ""
         athletePosition = profile.athletePosition ?? ""
         athlete2Position = profile.athlete2Position ?? ""
+        athlete3Position = profile.athlete3Position ?? ""
         notesForCoach = profile.notesForCoach ?? ""
         emailAddress = profile.emailAddress ?? ""
         phoneNumber = profile.phoneNumber ?? ""
@@ -167,8 +182,11 @@ struct EditProfileView: View {
                     athleteLastName: athleteLastName,
                     athlete2FirstName: athlete2FirstName.isEmpty ? nil : athlete2FirstName,
                     athlete2LastName: athlete2LastName.isEmpty ? nil : athlete2LastName,
+                    athlete3FirstName: athlete3FirstName.isEmpty ? nil : athlete3FirstName,
+                    athlete3LastName: athlete3LastName.isEmpty ? nil : athlete3LastName,
                     athletePosition: athletePosition.isEmpty ? nil : athletePosition,
                     athlete2Position: athlete2Position.isEmpty ? nil : athlete2Position,
+                    athlete3Position: athlete3Position.isEmpty ? nil : athlete3Position,
                     notesForCoach: notesForCoach.isEmpty ? nil : notesForCoach,
                     emailAddress: emailAddress,
                     phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber

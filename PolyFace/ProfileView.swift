@@ -713,6 +713,14 @@ private struct RegisterForm: View {
     @State private var lastName = ""
     @State private var athleteFirstName = ""
     @State private var athleteLastName = ""
+    @State private var athlete2FirstName = ""
+    @State private var athlete2LastName = ""
+    @State private var athlete3FirstName = ""
+    @State private var athlete3LastName = ""
+    @State private var athletePosition = ""
+    @State private var athlete2Position = ""
+    @State private var athlete3Position = ""
+    @State private var notesForCoach = ""
     @State private var phoneNumber = ""
 
     var body: some View {
@@ -746,9 +754,32 @@ private struct RegisterForm: View {
             .padding()
             .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
 
-            HStack(spacing: 12) {
-                TextField("Athlete First Name", text: $athleteFirstName)
-                TextField("Athlete Last Name", text: $athleteLastName)
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    TextField("Athlete First Name", text: $athleteFirstName)
+                    TextField("Athlete Last Name", text: $athleteLastName)
+                }
+                TextField("Position", text: $athletePosition)
+            }
+            .padding()
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
+
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    TextField("Athlete 2 First (Optional)", text: $athlete2FirstName)
+                    TextField("Athlete 2 Last (Optional)", text: $athlete2LastName)
+                }
+                TextField("Position (Optional)", text: $athlete2Position)
+            }
+            .padding()
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
+
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    TextField("Athlete 3 First (Optional)", text: $athlete3FirstName)
+                    TextField("Athlete 3 Last (Optional)", text: $athlete3LastName)
+                }
+                TextField("Position (Optional)", text: $athlete3Position)
             }
             .padding()
             .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
@@ -757,6 +788,11 @@ private struct RegisterForm: View {
                 #if os(iOS)
                 .keyboardType(.phonePad)
                 #endif
+                .padding()
+                .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
+
+            TextField("Notes for Coach (Optional)", text: $notesForCoach, axis: .vertical)
+                .lineLimit(3...6)
                 .padding()
                 .background(RoundedRectangle(cornerRadius: 12).fill(Color.platformSecondaryBackground))
 
@@ -770,6 +806,14 @@ private struct RegisterForm: View {
                         lastName: lastName.isEmpty ? nil : lastName,
                         athleteFirstName: athleteFirstName.isEmpty ? nil : athleteFirstName,
                         athleteLastName: athleteLastName.isEmpty ? nil : athleteLastName,
+                        athlete2FirstName: athlete2FirstName.isEmpty ? nil : athlete2FirstName,
+                        athlete2LastName: athlete2LastName.isEmpty ? nil : athlete2LastName,
+                        athlete3FirstName: athlete3FirstName.isEmpty ? nil : athlete3FirstName,
+                        athlete3LastName: athlete3LastName.isEmpty ? nil : athlete3LastName,
+                        athletePosition: athletePosition.isEmpty ? nil : athletePosition,
+                        athlete2Position: athlete2Position.isEmpty ? nil : athlete2Position,
+                        athlete3Position: athlete3Position.isEmpty ? nil : athlete3Position,
+                        notesForCoach: notesForCoach.isEmpty ? nil : notesForCoach,
                         phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber
                     )
                 }

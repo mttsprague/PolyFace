@@ -8,10 +8,13 @@ struct UserProfile: Identifiable {
     var lastName: String?
     var athleteFirstName: String?
     var athleteLastName: String?
+    var athleteBirthday: String?
     var athlete2FirstName: String?
     var athlete2LastName: String?
+    var athlete2Birthday: String?
     var athlete3FirstName: String?
     var athlete3LastName: String?
+    var athlete3Birthday: String?
     var athletePosition: String?
     var athlete2Position: String?
     var athlete3Position: String?

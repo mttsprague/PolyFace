@@ -280,6 +280,99 @@ private struct SignedInProfileScreen: View {
                 }
             }
 
+            // Athlete Info card
+            if let user = usersService.currentUser,
+               let athleteFirst = user.athleteFirstName,
+               let athleteLast = user.athleteLastName,
+               !athleteFirst.isEmpty, !athleteLast.isEmpty {
+                card {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Athletes")
+                            .font(.title3.bold())
+                            .foregroundStyle(Brand.primary)
+                        
+                        // Athlete 1
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "figure.volleyball").foregroundStyle(.secondary)
+                                Text("\(athleteFirst) \(athleteLast)")
+                                    .font(.headline)
+                            }
+                            if let position = user.athletePosition, !position.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "sportscourt").foregroundStyle(.secondary)
+                                    Text(position)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            if let birthday = user.athleteBirthday, !birthday.isEmpty {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "calendar").foregroundStyle(.secondary)
+                                    Text(birthday)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        
+                        // Athlete 2
+                        if let athlete2First = user.athlete2FirstName,
+                           let athlete2Last = user.athlete2LastName,
+                           !athlete2First.isEmpty, !athlete2Last.isEmpty {
+                            Divider()
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "figure.volleyball").foregroundStyle(.secondary)
+                                    Text("\(athlete2First) \(athlete2Last)")
+                                        .font(.headline)
+                                }
+                                if let position = user.athlete2Position, !position.isEmpty {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "sportscourt").foregroundStyle(.secondary)
+                                        Text(position)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                if let birthday = user.athlete2Birthday, !birthday.isEmpty {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "calendar").foregroundStyle(.secondary)
+                                        Text(birthday)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Athlete 3
+                        if let athlete3First = user.athlete3FirstName,
+                           let athlete3Last = user.athlete3LastName,
+                           !athlete3First.isEmpty, !athlete3Last.isEmpty {
+                            Divider()
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "figure.volleyball").foregroundStyle(.secondary)
+                                    Text("\(athlete3First) \(athlete3Last)")
+                                        .font(.headline)
+                                }
+                                if let position = user.athlete3Position, !position.isEmpty {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "sportscourt").foregroundStyle(.secondary)
+                                        Text(position)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                if let birthday = user.athlete3Birthday, !birthday.isEmpty {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "calendar").foregroundStyle(.secondary)
+                                        Text(birthday)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // View Full Schedule button
             NavigationLink {
                 MyUpcomingLessonsView(bookingsService: bookingsService,
@@ -717,10 +810,13 @@ private struct RegisterForm: View {
     @State private var lastName = ""
     @State private var athleteFirstName = ""
     @State private var athleteLastName = ""
+    @State private var athleteBirthday = ""
     @State private var athlete2FirstName = ""
     @State private var athlete2LastName = ""
+    @State private var athlete2Birthday = ""
     @State private var athlete3FirstName = ""
     @State private var athlete3LastName = ""
+    @State private var athlete3Birthday = ""
     @State private var athletePosition = ""
     @State private var athlete2Position = ""
     @State private var athlete3Position = ""
@@ -739,6 +835,8 @@ private struct RegisterForm: View {
         !lastName.isEmpty &&
         !athleteFirstName.isEmpty &&
         !athleteLastName.isEmpty &&
+        !athleteBirthday.isEmpty &&
+        isValidBirthday(athleteBirthday) &&
         !athletePosition.isEmpty &&
         !phoneNumber.isEmpty &&
         !isRegistering
@@ -852,6 +950,16 @@ private struct RegisterForm: View {
                     }
                     
                     FormField(
+                        icon: "calendar",
+                        placeholder: "Birthday (MM/DD/YYYY)",
+                        text: $athleteBirthday,
+                        keyboardType: .numberPad
+                    )
+                    .onChange(of: athleteBirthday) { _, newValue in
+                        athleteBirthday = formatBirthdayInput(newValue)
+                    }
+                    
+                    FormField(
                         icon: "star.fill",
                         placeholder: "Position (e.g., Setter, Outside Hitter)",
                         text: $athletePosition
@@ -887,6 +995,16 @@ private struct RegisterForm: View {
                         
                         if !athlete2FirstName.isEmpty || !athlete2LastName.isEmpty {
                             FormField(
+                                icon: "calendar",
+                                placeholder: "Birthday (MM/DD/YYYY)",
+                                text: $athlete2Birthday,
+                                keyboardType: .numberPad
+                            )
+                            .onChange(of: athlete2Birthday) { _, newValue in
+                                athlete2Birthday = formatBirthdayInput(newValue)
+                            }
+                            
+                            FormField(
                                 icon: "star",
                                 placeholder: "Position",
                                 text: $athlete2Position
@@ -913,6 +1031,16 @@ private struct RegisterForm: View {
                         }
                         
                         if !athlete3FirstName.isEmpty || !athlete3LastName.isEmpty {
+                            FormField(
+                                icon: "calendar",
+                                placeholder: "Birthday (MM/DD/YYYY)",
+                                text: $athlete3Birthday,
+                                keyboardType: .numberPad
+                            )
+                            .onChange(of: athlete3Birthday) { _, newValue in
+                                athlete3Birthday = formatBirthdayInput(newValue)
+                            }
+                            
                             FormField(
                                 icon: "star",
                                 placeholder: "Position",
@@ -1006,6 +1134,52 @@ private struct RegisterForm: View {
         }
     }
     
+    // MARK: - Helper Functions
+    
+    private func formatBirthdayInput(_ input: String) -> String {
+        // Remove any non-digit characters
+        let digits = input.filter { $0.isNumber }
+        
+        // Limit to 8 digits (MMDDYYYY)
+        let limited = String(digits.prefix(8))
+        
+        // Add slashes at appropriate positions
+        var formatted = ""
+        for (index, char) in limited.enumerated() {
+            if index == 2 || index == 4 {
+                formatted += "/"
+            }
+            formatted += String(char)
+        }
+        
+        return formatted
+    }
+    
+    private func isValidBirthday(_ birthday: String) -> Bool {
+        // Check format MM/DD/YYYY
+        let pattern = #"^\d{2}/\d{2}/\d{4}$"#
+        guard birthday.range(of: pattern, options: .regularExpression) != nil else {
+            return false
+        }
+        
+        let components = birthday.split(separator: "/")
+        guard components.count == 3,
+              let month = Int(components[0]),
+              let day = Int(components[1]),
+              let year = Int(components[2]) else {
+            return false
+        }
+        
+        // Validate ranges
+        guard month >= 1 && month <= 12,
+              day >= 1 && day <= 31,
+              year >= 1900 && year <= 2024 else {
+            return false
+        }
+        
+        return true
+    }
+    
     private func registerWithWaiver(signature: WaiverSignature) async {
         isRegistering = true
         defer { isRegistering = false }
@@ -1018,10 +1192,13 @@ private struct RegisterForm: View {
             lastName: lastName.isEmpty ? nil : lastName,
             athleteFirstName: athleteFirstName.isEmpty ? nil : athleteFirstName,
             athleteLastName: athleteLastName.isEmpty ? nil : athleteLastName,
+            athleteBirthday: athleteBirthday.isEmpty ? nil : athleteBirthday,
             athlete2FirstName: athlete2FirstName.isEmpty ? nil : athlete2FirstName,
             athlete2LastName: athlete2LastName.isEmpty ? nil : athlete2LastName,
+            athlete2Birthday: athlete2Birthday.isEmpty ? nil : athlete2Birthday,
             athlete3FirstName: athlete3FirstName.isEmpty ? nil : athlete3FirstName,
             athlete3LastName: athlete3LastName.isEmpty ? nil : athlete3LastName,
+            athlete3Birthday: athlete3Birthday.isEmpty ? nil : athlete3Birthday,
             athletePosition: athletePosition.isEmpty ? nil : athletePosition,
             athlete2Position: athlete2Position.isEmpty ? nil : athlete2Position,
             athlete3Position: athlete3Position.isEmpty ? nil : athlete3Position,

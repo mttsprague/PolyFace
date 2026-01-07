@@ -231,6 +231,14 @@ private struct ClassPreviewRow: View {
                     }
                     .foregroundStyle(AppTheme.textSecondary)
                     
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "person.fill")
+                            .font(.labelSmall)
+                        Text(groupClass.trainerName)
+                            .font(.labelMedium)
+                    }
+                    .foregroundStyle(AppTheme.textSecondary)
+                    
                     // Capacity badge
                     if !isRegistered && groupClass.spotsRemaining <= 3 {
                         HStack(spacing: Spacing.xxs) {

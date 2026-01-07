@@ -436,6 +436,20 @@ struct AdminClassCard: View {
                             Text("\(classItem.startTime.formatted(date: .omitted, time: .shortened)) - \(classItem.endTime.formatted(date: .omitted, time: .shortened))")
                                 .font(.labelMedium)
                         }
+                        
+                        HStack(spacing: Spacing.xxs) {
+                            Image(systemName: "mappin.circle")
+                                .font(.labelSmall)
+                            Text(classItem.location)
+                                .font(.labelMedium)
+                        }
+                        
+                        HStack(spacing: Spacing.xxs) {
+                            Image(systemName: "person.fill")
+                                .font(.labelSmall)
+                            Text(classItem.trainerName)
+                                .font(.labelMedium)
+                        }
                     }
                     .foregroundStyle(AppTheme.textSecondary)
                     

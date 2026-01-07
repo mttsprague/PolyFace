@@ -86,7 +86,10 @@ final class AdminService: ObservableObject {
         
         let classRef = try await db.collection("classes").addDocument(data: classData)
         
-        // Create a booking in the trainer's schedule to block off the time
+        // Fetch all trainers
+        let trainersSnapshot = try await db.collection("trainers").getDocuments()
+        
+        // Create a booking in ALL trainers' schedules to block off the time
         let bookingData: [String: Any] = [
             "startTime": Timestamp(date: startTime),
             "endTime": Timestamp(date: endTime),
@@ -98,8 +101,11 @@ final class AdminService: ObservableObject {
             "bookedAt": Timestamp(date: Date())
         ]
         
-        try await db.collection("trainers").document(trainerId)
-            .collection("schedules").addDocument(data: bookingData)
+        // Add slot to all trainers' schedules
+        for trainerDoc in trainersSnapshot.documents {
+            try await db.collection("trainers").document(trainerDoc.documentID)
+                .collection("schedules").addDocument(data: bookingData)
+        }
     }
     
     // Toggle class registration status
@@ -120,7 +126,24 @@ final class AdminService: ObservableObject {
                          userInfo: [NSLocalizedDescriptionKey: "Unauthorized"])
         }
         
+        // Delete the class document
         try await db.collection("classes").document(classId).delete()
+        
+        // Remove class bookings from all trainers' schedules
+        let trainersSnapshot = try await db.collection("trainers").getDocuments()
+        
+        for trainerDoc in trainersSnapshot.documents {
+            let schedulesQuery = db.collection("trainers").document(trainerDoc.documentID)
+                .collection("schedules")
+                .whereField("classId", isEqualTo: classId)
+                .whereField("isClassBooking", isEqualTo: true)
+            
+            let schedulesSnapshot = try await schedulesQuery.getDocuments()
+            
+            for scheduleDoc in schedulesSnapshot.documents {
+                try await scheduleDoc.reference.delete()
+            }
+        }
     }
     
     // Load all users (admin only)

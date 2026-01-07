@@ -24,6 +24,24 @@ struct MonthCalendarView: View {
             grid
         }
         .padding(.horizontal)
+        .gesture(
+            DragGesture(minimumDistance: 30)
+                .onEnded { value in
+                    let horizontalDistance = value.translation.width
+                    let verticalDistance = abs(value.translation.height)
+                    
+                    // Only trigger if horizontal swipe is more prominent than vertical
+                    if abs(horizontalDistance) > verticalDistance {
+                        if horizontalDistance < 0 {
+                            // Swiped left - next month
+                            changeMonth(by: 1)
+                        } else if horizontalDistance > 0 {
+                            // Swiped right - previous month
+                            changeMonth(by: -1)
+                        }
+                    }
+                }
+        )
     }
 
     private var header: some View {

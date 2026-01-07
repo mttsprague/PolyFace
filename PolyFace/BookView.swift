@@ -700,6 +700,13 @@ private struct ClassCard: View {
                             Text(classItem.location)
                                 .font(.bodyMedium)
                         }
+                        
+                        HStack(spacing: Spacing.xxs) {
+                            Image(systemName: "person.fill")
+                                .font(.bodySmall)
+                            Text(classItem.trainerName)
+                                .font(.bodyMedium)
+                        }
                     }
                     .foregroundStyle(AppTheme.textSecondary)
                 }

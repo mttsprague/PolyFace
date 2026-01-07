@@ -146,6 +146,68 @@ final class AdminService: ObservableObject {
         }
     }
     
+    // Update a class
+    func updateClass(
+        classId: String,
+        title: String,
+        description: String,
+        startTime: Date,
+        endTime: Date,
+        maxParticipants: Int,
+        location: String,
+        trainerId: String,
+        trainerName: String
+    ) async throws {
+        guard isAdmin else {
+            throw NSError(domain: "AdminService", code: -1,
+                         userInfo: [NSLocalizedDescriptionKey: "Unauthorized"])
+        }
+        
+        // Update the class document
+        try await db.collection("classes").document(classId).updateData([
+            "title": title,
+            "description": description,
+            "startTime": Timestamp(date: startTime),
+            "endTime": Timestamp(date: endTime),
+            "maxParticipants": maxParticipants,
+            "location": location,
+            "trainerId": trainerId,
+            "trainerName": trainerName
+        ])
+        
+        // Remove old bookings from all trainers' schedules
+        let trainersSnapshot = try await db.collection("trainers").getDocuments()
+        
+        for trainerDoc in trainersSnapshot.documents {
+            let schedulesQuery = db.collection("trainers").document(trainerDoc.documentID)
+                .collection("schedules")
+                .whereField("classId", isEqualTo: classId)
+                .whereField("isClassBooking", isEqualTo: true)
+            
+            let schedulesSnapshot = try await schedulesQuery.getDocuments()
+            
+            for scheduleDoc in schedulesSnapshot.documents {
+                try await scheduleDoc.reference.delete()
+            }
+        }
+        
+        // Create new bookings on all trainers' schedules with updated times
+        let bookingData: [String: Any] = [
+            "clientId": "",
+            "startTime": Timestamp(date: startTime),
+            "endTime": Timestamp(date: endTime),
+            "packageType": "class",
+            "classId": classId,
+            "isClassBooking": true,
+            "bookedAt": Timestamp(date: Date())
+        ]
+        
+        for trainerDoc in trainersSnapshot.documents {
+            try await db.collection("trainers").document(trainerDoc.documentID)
+                .collection("schedules").addDocument(data: bookingData)
+        }
+    }
+    
     // Load all users (admin only)
     func loadAllUsers() async {
         guard isAdmin else { return }

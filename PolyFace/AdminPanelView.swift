@@ -13,6 +13,8 @@ struct AdminPanelView: View {
     @StateObject private var trainersService = TrainersService()
     @StateObject private var packagesService = PackagesService()
     @State private var showingCreateClass = false
+    @State private var showingEditClass = false
+    @State private var classToEdit: GroupClass?
     @State private var alertItem: AlertItem?
     @State private var tabSelection: AdminTab = .passes
     
@@ -62,6 +64,15 @@ struct AdminPanelView: View {
             }
             .sheet(isPresented: $showingCreateClass) {
                 CreateClassView(adminService: adminService, trainersService: trainersService) {
+                    Task { await classesService.loadAllClasses() }
+                }
+            }
+            .sheet(item: $classToEdit) { classItem in
+                EditClassView(
+                    classItem: classItem,
+                    adminService: adminService,
+                    trainersService: trainersService
+                ) {
                     Task { await classesService.loadAllClasses() }
                 }
             }
@@ -296,6 +307,9 @@ struct AdminPanelView: View {
                         ForEach(classesService.classes) { classItem in
                             AdminClassCard(
                                 classItem: classItem,
+                                onTap: {
+                                    classToEdit = classItem
+                                },
                                 onToggleRegistration: { isOpen in
                                     Task {
                                         do {
@@ -390,6 +404,7 @@ struct AdminPanelView: View {
 
 struct AdminClassCard: View {
     let classItem: GroupClass
+    let onTap: () -> Void
     let onToggleRegistration: (Bool) -> Void
     let onDelete: () -> Void
     
@@ -511,6 +526,10 @@ struct AdminClassCard: View {
                 }
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
         .alert("Delete Class", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -630,6 +649,145 @@ struct CreateClassView: View {
         }
         
         isCreating = false
+    }
+}
+
+struct EditClassView: View {
+    @Environment(\.dismiss) private var dismiss
+    let classItem: GroupClass
+    @ObservedObject var adminService: AdminService
+    @ObservedObject var trainersService: TrainersService
+    let onUpdated: () -> Void
+    
+    @State private var title = ""
+    @State private var description = ""
+    @State private var startDate = Date()
+    @State private var endDate = Date()
+    @State private var maxParticipants = 20
+    @State private var location = ""
+    @State private var selectedTrainer: Trainer?
+    @State private var isUpdating = false
+    @State private var errorMessage: String?
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section("Class Details") {
+                    TextField("Title", text: $title)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description")
+                            .font(.callout)
+                            .foregroundStyle(AppTheme.textSecondary)
+                        TextEditor(text: $description)
+                            .frame(minHeight: 80, maxHeight: 160)
+                    }
+                    TextField("Location", text: $location)
+                }
+                
+                Section("Head Trainer") {
+                    Picker("Select Trainer", selection: $selectedTrainer) {
+                        Text("Select a trainer").tag(nil as Trainer?)
+                        ForEach(trainersService.trainers) { trainer in
+                            Text(trainer.name ?? "Unknown").tag(trainer as Trainer?)
+                        }
+                    }
+                }
+                
+                Section("Schedule") {
+                    DatePicker("Start Time", selection: $startDate)
+                    DatePicker("End Time", selection: $endDate)
+                }
+                
+                Section("Capacity") {
+                    Stepper("Max Participants: \(maxParticipants)", value: $maxParticipants, in: 1...50)
+                    Text("Current Participants: \(classItem.currentParticipants)")
+                        .font(.bodySmall)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                
+                if let errorMessage = errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(AppTheme.error)
+                            .font(.bodySmall)
+                    }
+                }
+            }
+            .navigationTitle("Edit Class")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        Task { await updateClass() }
+                    }
+                    .disabled(isUpdating || title.isEmpty || description.isEmpty || selectedTrainer == nil)
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+        .onAppear {
+            // Initialize state with existing class data
+            title = classItem.title
+            description = classItem.description
+            startDate = classItem.startTime
+            endDate = classItem.endTime
+            maxParticipants = classItem.maxParticipants
+            location = classItem.location
+            
+            // Find and select the current trainer
+            if let trainer = trainersService.trainers.first(where: { $0.id == classItem.trainerId }) {
+                selectedTrainer = trainer
+            }
+        }
+    }
+    
+    private func updateClass() async {
+        guard let trainer = selectedTrainer else {
+            errorMessage = "Please select a head trainer"
+            return
+        }
+        
+        guard let trainerId = trainer.id, !trainerId.isEmpty,
+              let trainerName = trainer.name, !trainerName.isEmpty else {
+            errorMessage = "Selected trainer is missing required information."
+            return
+        }
+        
+        guard let classId = classItem.id else {
+            errorMessage = "Class ID is missing."
+            return
+        }
+        
+        if maxParticipants < classItem.currentParticipants {
+            errorMessage = "Max participants cannot be less than current participants (\(classItem.currentParticipants))"
+            return
+        }
+        
+        isUpdating = true
+        errorMessage = nil
+        
+        do {
+            try await adminService.updateClass(
+                classId: classId,
+                title: title,
+                description: description,
+                startTime: startDate,
+                endTime: endDate,
+                maxParticipants: maxParticipants,
+                location: location,
+                trainerId: trainerId,
+                trainerName: trainerName
+            )
+            onUpdated()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isUpdating = false
     }
 }
 
